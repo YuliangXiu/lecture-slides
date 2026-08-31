@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>演讲者视图 · __TITLE__</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body { background:#0b0d12; color:#e8ecf4; display:flex; flex-direction:column;
+  font-family:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif; }
+header { flex:none; display:flex; align-items:center; gap:14px; padding:10px 18px;
+  background:#11141c; border-bottom:1px solid #23262f; }
+header .ttl { font-size:15px; font-weight:700; opacity:.9; max-width:32vw;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+header .mid { display:flex; align-items:center; gap:10px; }
+.ind { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:16px;
+  min-width:84px; text-align:center; color:#7ee2a8; }
+button { background:#1d2130; color:#e8ecf4; border:1px solid #2c3140; border-radius:8px;
+  padding:6px 14px; font-size:14px; cursor:pointer; }
+button:hover { background:#272c3d; }
+header .right { margin-left:auto; display:flex; align-items:center; gap:10px; font-size:13px; }
+#clock { font-family:ui-monospace,monospace; opacity:.75; }
+#timer { font-family:ui-monospace,monospace; font-size:16px; color:#ffd479; cursor:pointer; }
+#timer.paused { opacity:.45; }
+.dot { width:9px; height:9px; border-radius:50%; background:#565b6b; flex:none; }
+.dot.on { background:#39d98a; box-shadow:0 0 8px rgba(57,217,138,.6); }
+
+/* ---------- 布局：左列 = 当前页大预览 + 双进度条；右列 = 下一页预览 + 演讲文稿 ---------- */
+main { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+  gap:14px; padding:14px 18px; }
+.col { min-width:0; min-height:0; display:flex; flex-direction:column; gap:14px; }
+.frame { background:#11141c; border:1px solid #23262f; border-radius:12px; position:relative;
+  display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.frame .lab { position:absolute; top:8px; left:12px; z-index:3; font-size:12px; letter-spacing:.12em;
+  color:#8b93a6; background:rgba(10,12,18,.6); padding:2px 10px; border-radius:6px; }
+.f-cur { flex:1; min-height:0; }
+.f-next { flex:none; height:40%; min-height:0; }
+.frame iframe { border:0; width:100%; height:100%; background:#000; }
+.f-next.dim::after { content:"已是末页"; position:absolute; inset:0; z-index:2;
+  background:rgba(10,12,16,.72); display:flex; align-items:center; justify-content:center;
+  font-size:15px; color:#8b93a6; letter-spacing:.2em; }
+
+/* ---------- 双进度条 ---------- */
+.bars { flex:none; background:#11141c; border:1px solid #23262f; border-radius:12px;
+  padding:13px 16px 9px; }
+.brow { display:grid; grid-template-columns:70px minmax(0,1fr) auto; gap:12px; align-items:center; }
+.brow + .brow { margin-top:9px; }
+.blab { font-size:12px; letter-spacing:.06em; color:#8b93a6; text-align:right; }
+.pbar { position:relative; height:14px; background:#1a1f2b; border-radius:7px; overflow:hidden; }
+.pfill { position:absolute; top:0; bottom:0; left:0; width:0; border-radius:7px; z-index:1;
+  transition:width .25s linear; }
+#fillTime { background:linear-gradient(90deg,#0369a1,#38bdf8); }
+#fillContent { background:linear-gradient(90deg,#15803d,#4ade80); }
+#timeTicks, #barSegs { position:absolute; top:0; bottom:0; left:0; right:0; z-index:2; }
+#timeTicks .tick { position:absolute; top:0; bottom:0; width:2px; background:rgba(232,236,244,.30); }
+#barSegs .seg { position:absolute; top:0; bottom:0; border-right:1px solid rgba(232,236,244,.16); }
+#barSegs .seg.on { background:rgba(255,255,255,.14);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28); }
+.bval { display:flex; align-items:center; gap:8px; font-family:ui-monospace,monospace;
+  font-size:12.5px; color:#aeb6c8; white-space:nowrap; }
+.pace { font-size:11.5px; padding:1px 8px; border-radius:999px; font-family:-apple-system,"PingFang SC",sans-serif; }
+.pace.ok   { color:#7ee2a8; background:rgba(57,217,138,.12); }
+.pace.fast { color:#ffd479; background:rgba(255,212,121,.14); }
+.pace.slow { color:#ff8fa3; background:rgba(255,143,163,.14); }
+#barFoot { margin-top:9px; padding-top:7px; border-top:1px dashed #23262f;
+  font-size:11.5px; color:#6a7183; }
+
+/* ---------- 演讲文稿（右列，下一页预览下方） ---------- */
+aside.notes { flex:1; min-height:0; background:#11141c; border:1px solid #23262f; border-radius:12px;
+  display:flex; flex-direction:column; }
+aside.notes .lab { flex:none; padding:10px 16px; font-size:12px; letter-spacing:.12em;
+  color:#8b93a6; border-bottom:1px solid #23262f; }
+.nbody { flex:1; overflow:auto; padding:18px 20px; font-size:19px; line-height:1.75;
+  white-space:pre-wrap; color:#dfe5f0; }
+.nbody.placeholder { color:#6a7183; }
+.hint { flex:none; padding:8px 18px; font-size:12.5px; color:#6a7183; background:#11141c;
+  border-top:1px solid #23262f; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <span class="ttl">__TITLE__</span>
+  <div class="mid">
+    <button id="prev">◀ 上一页</button>
+    <span class="ind" id="ind">— / —</span>
+    <button id="next">下一页 ▶</button>
+  </div>
+  <div class="right">
+    <span id="clock">--:--</span>
+    <span id="timer" title="点击暂停/继续">00:00</span>
+    <button id="treset" title="计时归零">↺</button>
+    <button id="askfs" title="请求观众放映窗口进入全屏（若无效，请点击放映窗口后按 F）">⛶ 观众屏全屏</button>
+    <button id="selffs" title="本窗口全屏 (F)">⛶ 本窗 (F)</button>
+  </div>
+</header>
+<main>
+  <section class="col colL">
+    <div class="frame f-cur"><span class="lab">当前页</span><iframe id="curF"></iframe></div>
+    <section class="bars">
+      <div class="brow">
+        <span class="blab">课堂时间</span>
+        <div class="pbar"><div id="fillTime" class="pfill"></div><div id="timeTicks"></div></div>
+        <span class="bval" id="timeVal">00:00 / 45:00</span>
+      </div>
+      <div class="brow">
+        <span class="blab">内容进度</span>
+        <div class="pbar"><div id="fillContent" class="pfill"></div><div id="barSegs"></div></div>
+        <span class="bval"><span id="pageVal">— / —</span><span class="pace ok" id="paceVal">正常</span></span>
+      </div>
+      <div id="barFoot">等待放映窗口连接…</div>
+    </section>
+  </section>
+  <section class="col colR">
+    <div class="frame f-next" id="nextWrap"><span class="lab" id="nextLab">下一页</span><iframe id="nextF"></iframe></div>
+    <aside class="notes">
+      <div class="lab">演讲文稿 · 备注</div>
+      <div class="nbody" id="nbody">正在连接放映窗口…</div>
+    </aside>
+  </section>
+</main>
+<div class="hint">提示：方向键 / 空格翻页（放映窗口或本窗口均可）· Home / End 首末页 · 将本窗口拖到另一块屏幕后按 ⛶ 或 F 全屏；单屏时不开本窗口即正常全屏放映。</div>
+<script>
+(function () {
+  var TAG = '__hwyqPres', SYNCTAG = '__hwyqSync';
+  var opener = window.opener;
+  var curF = document.getElementById('curF'), nextF = document.getElementById('nextF');
+  var ind = document.getElementById('ind'), nb = document.getElementById('nbody');
+  var page = null, total = null, inited = false, readyCur = false, readyNext = false;
+
+  /* ---------- 与放映窗口通信 ---------- */
+  function toOpener(m) { m[TAG] = 1; try { opener.postMessage(m, '*'); } catch (e) {} }
+  function hello() { toOpener({ cmd: 'hello' }); }
+  hello(); setTimeout(hello, 500); setTimeout(hello, 1500); setTimeout(hello, 3500);
+
+  /* ---------- 预览 iframe：复用 SYNC 的 goto 协议 ---------- */
+  function fsend(fr, p) {
+    try { fr.contentWindow.postMessage({ __hwyqSync: 1, cmd: 'goto', page: p }, '*'); } catch (e) {}
+  }
+  curF.onload = function () { readyCur = true; if (page) fsend(curF, page); };
+  nextF.onload = function () { readyNext = true; if (page) fsend(nextF, Math.min(page + 1, total)); };
+
+  function apply(p, t, n) {
+    if (page !== p) slideStart = acc;      /* 换页时刻 = 计时器当前值，用于估算本页已讲时长 */
+    page = p; total = t;
+    ind.textContent = p + ' / ' + t;
+    pageVal.textContent = p + ' / ' + t;
+    if (n && n.trim()) { nb.textContent = n; nb.classList.remove('placeholder'); }
+    else { nb.textContent = '（本页无备注）'; nb.classList.add('placeholder'); }
+    if (!inited) {                       /* 首次：带 hash 直达当前页，避免闪到第 1 页 */
+      inited = true;
+      curF.src = 'index.html#/' + p;
+      nextF.src = 'index.html#/' + Math.min(p + 1, t);
+    } else {
+      if (readyCur) fsend(curF, p);
+      if (readyNext) fsend(nextF, Math.min(p + 1, t));
+    }
+    var last = p >= t;
+    document.getElementById('nextWrap').classList.toggle('dim', last);
+    document.getElementById('nextLab').textContent = last ? '下一页' : '下一页 · 第 ' + Math.min(p + 1, t) + ' 页';
+    updateBars();
+  }
+
+  /* ---------- 兜底自愈：周期性对齐预览 iframe ----------
+     消息可能丢失于 iframe 加载窗口期；预览是放映窗口的严格镜像（唯一权威），
+     定期重发 goto 幂等（引擎同页早退，无视觉扰动），保证最终一致 */
+  setInterval(function () {
+    if (!inited || !page) return;
+    fsend(curF, page);
+    fsend(nextF, Math.min(page + 1, total));
+  }, 800);
+
+  /* ---------- 双进度条 ----------
+     durs[i]  每页预计秒数（放映窗口按语速 220 字/分估算）
+     cum[i]   前 i 页累计预计秒数；totalSec = cum[n]（讲稿预计总时长）
+     bar1 课堂时间：fill = elapsed / courseSec（45min 画布），刻度 = cum[i]（跟上讲稿应有的时刻）
+     bar2 内容进度：fill = edge / totalSec（讲稿总时长画布），edge = cum[page-1] + min(本页已讲, durs[page-1])
+     pace = edge - elapsed：>0 超前（讲得快），<0 落后（讲得慢），|pace| > 20s 才改变提示 */
+  var durs = null, courseSec = 2700, cum = [0], totalSec = 0, slideStart = 0, metaKey = '';
+  var fillTime = document.getElementById('fillTime'), fillContent = document.getElementById('fillContent');
+  var timeTicks = document.getElementById('timeTicks'), barSegs = document.getElementById('barSegs');
+  var timeVal = document.getElementById('timeVal'), pageVal = document.getElementById('pageVal');
+  var paceVal = document.getElementById('paceVal'), barFoot = document.getElementById('barFoot');
+
+  function fmtC(s) { s = Math.round(s); var m = Math.floor(s / 60);
+    return m + ':' + String(s % 60).padStart(2, '0'); }
+
+  function onMeta(d) {
+    var key = d.durs.join(',') + ':' + d.courseSec;
+    if (key === metaKey) { updateBars(); return; }   /* 幂等：重复 meta 只刷新数值 */
+    metaKey = key;
+    durs = d.durs; courseSec = d.courseSec || 2700;
+    cum = [0];
+    for (var i = 0; i < durs.length; i++) cum.push(cum[i] + durs[i]);
+    totalSec = cum[durs.length];
+    buildTicks(); buildSegs();
+    barFoot.textContent = '讲稿预计 ' + fmt(totalSec) + '（共 ' + durs.length +
+      ' 页 · 语速 220 字/分估算）· 课堂 ' + fmt(courseSec) + ' · 双条对齐 = 节奏正常';
+    updateBars();
+  }
+  function buildTicks() {
+    timeTicks.innerHTML = '';
+    for (var i = 1; i < cum.length; i++) {           /* 29 个刻度：讲完第 i 页应到达的时刻 */
+      var t = document.createElement('div'); t.className = 'tick';
+      t.style.left = Math.min(100, cum[i] / courseSec * 100) + '%';
+      timeTicks.appendChild(t);
+    }
+  }
+  function buildSegs() {
+    barSegs.innerHTML = '';
+    for (var i = 0; i < durs.length; i++) {          /* 30 个分段：每页在讲稿时长中的占比 */
+      var s = document.createElement('div'); s.className = 'seg';
+      s.style.left = (cum[i] / totalSec * 100) + '%';
+      s.style.width = (durs[i] / totalSec * 100) + '%';
+      barSegs.appendChild(s);
+    }
+  }
+  function updateBars() {
+    var el = acc;
+    fillTime.style.width = Math.min(100, el / courseSec * 100) + '%';
+    timeVal.textContent = fmt(Math.min(el, courseSec)) + ' / ' + fmt(courseSec);
+    if (!durs || !page) return;
+    var i = page - 1;
+    var inPage = Math.max(0, Math.min(el - slideStart, durs[i]));
+    var edge = cum[i] + inPage;
+    fillContent.style.width = Math.min(100, edge / totalSec * 100) + '%';
+    var segs = barSegs.children;
+    for (var k = 0; k < segs.length; k++) segs[k].classList.toggle('on', k === i);
+    var pace = edge - el;
+    var cls = pace > 20 ? 'fast' : pace < -20 ? 'slow' : 'ok';
+    var lab = cls === 'fast' ? '快' : cls === 'slow' ? '慢' : '正常';
+    paceVal.className = 'pace ' + cls;
+    paceVal.textContent = lab + ' ' + (pace >= 0 ? '+' : '−') + fmtC(Math.abs(pace));
+  }
+
+  /* ---------- 接收消息：放映窗口的 state/meta / 预览 iframe 内的按键转发 ---------- */
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d) return;
+    if (d[SYNCTAG] && d.cmd === 'nav' &&
+        (e.source === curF.contentWindow || e.source === nextF.contentWindow)) {
+      toOpener({ cmd: 'nav', dir: d.dir }); return;   /* iframe 内方向键 → 放映窗口统一仲裁 */
+    }
+    if (d[TAG] && opener && e.source === opener) {
+      if (d.cmd === 'state') apply(d.page, d.total, d.notes);
+      else if (d.cmd === 'meta') onMeta(d);
+    }
+  });
+
+  /* ---------- 翻页 / 全屏 / 按钮 ---------- */
+  function selfFs() {
+    document.fullscreenElement ? document.exitFullscreen() :
+      document.documentElement.requestFullscreen().catch(function () {});
+  }
+  document.getElementById('prev').onclick = function () { toOpener({ cmd: 'nav', dir: -1 }); };
+  document.getElementById('next').onclick = function () { toOpener({ cmd: 'nav', dir: 1 }); };
+  document.getElementById('askfs').onclick = function () { toOpener({ cmd: 'fs' }); };
+  document.getElementById('selffs').onclick = selfFs;
+  window.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'ArrowDown') { e.preventDefault(); toOpener({ cmd: 'nav', dir: 1 }); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'ArrowUp') { e.preventDefault(); toOpener({ cmd: 'nav', dir: -1 }); }
+    else if (k === 'Home') { e.preventDefault(); toOpener({ cmd: 'goto', page: 1 }); }
+    else if (k === 'End') { e.preventDefault(); if (total) toOpener({ cmd: 'goto', page: total }); }
+    else if (k === 'f' || k === 'F') { e.preventDefault(); selfFs(); }
+  });
+
+  /* ---------- 计时器 / 时钟 / 连接状态 ---------- */
+  var acc = 0, paused = false, lastMark = Date.now();
+  function fmt(s) { s = Math.floor(s); var m = Math.floor(s / 60);
+    return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
+  setInterval(function () {
+    if (!paused) acc += (Date.now() - lastMark) / 1000;
+    lastMark = Date.now();
+    document.getElementById('timer').textContent = fmt(acc);
+    updateBars();
+    var d = new Date();
+    document.getElementById('clock').textContent =
+      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }, 500);
+  document.getElementById('timer').onclick = function () {
+    paused = !paused; this.classList.toggle('paused', paused);
+  };
+  document.getElementById('treset').onclick = function () { acc = 0; slideStart = 0; updateBars(); };
+  function refreshDot() {
+    var ok = false;
+    try { ok = !!(opener && !opener.closed); } catch (e) { ok = false; }
+    document.getElementById('dot').classList.toggle('on', ok);
+    if (!ok) { nb.textContent = '放映窗口已断开'; nb.classList.add('placeholder'); }
+  }
+  setInterval(refreshDot, 1000); refreshDot();
+})();
+</script>
+</body>
+</html>

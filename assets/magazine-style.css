@@ -1,0 +1,57 @@
+/* ============================================================
+   Lecture Slides · 04-Magazine 杂志排版风（唯一保留风格）
+   米色纸面、衬线大标题、圆角卡片 + 顶部强调线的期刊质感。
+   用法：整段复制为目标课件的皮肤 CSS（或 <style>），并加载字体：
+   https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap
+   ============================================================ */
+
+:root {
+  --slide-bg:#f7f2e8; --stage-bg:#2b2620;
+  --ink:#191512; --ink2:#4d453c; --muted:#9a8f80; --line:#d9d0bf;
+  --accent:#a5281b; --accent2:#1c3f6e; --accent-soft:rgba(165,40,27,.06);
+  --card:#fbf8f1; --card-line:#d9d0bf; --card-shadow:0 4px 18px rgba(43,38,32,.14);
+  --radius:12px;
+  --font-d:"Playfair Display","Noto Serif SC",serif; --font-b:"Noto Serif SC",serif;
+  --pad-x:96px; --pad-t:64px; --fs-title:48px; --fs-body:22px; --fs-kicker:18px;
+}
+
+/* ---------- 版头 ---------- */
+.kicker { color:var(--accent); letter-spacing:.28em; text-transform:uppercase; font-weight:700; }
+.kicker::after { content:""; flex:1; height:1px; background:var(--ink); margin-left:18px; }
+.kicker { display:flex; width:100%; align-items:center; }
+.s-title { font-weight:900; line-height:1.15; }
+.s-head { border-bottom:3px double var(--ink); padding-bottom:18px; }
+.s-lead { font-style:italic; font-family:"Noto Serif SC",serif; }
+
+/* ---------- 框体统一（核心）：细边 + 顶部 3px 强调线 + 柔和投影 + 12px 圆角 ---------- */
+.card, .media-grid > figure, .ov-cell, .qbox, table.tbl, .stat {
+  border:1px solid var(--card-line); border-top:3px solid var(--accent);
+  background:var(--card); box-shadow:var(--card-shadow); }
+.stat { border-top-color:var(--accent2); }
+/* 嵌套结构：仅最外层框保留顶部强调线，内层框体（图像/视频/卡片等）一律回归细边 */
+:is(.card, .media-grid > figure, .ov-cell, .qbox, table.tbl, .stat)
+:is(.card, .media-grid > figure, .ov-cell, .qbox, table.tbl, .stat) {
+  border-top-width:1px;
+  border-top-color:var(--card-line);
+}
+table.tbl th { background:var(--ink); color:var(--slide-bg); font-family:var(--font-d); }
+
+/* ---------- 封面 ---------- */
+.cv { align-items:center; text-align:center; }
+.cv-kicker { letter-spacing:.4em; font-size:22px; color:var(--ink2); }
+.cv-band { border-top:2px solid var(--ink); border-bottom:2px solid var(--ink); align-self:stretch; }
+.cv-title { font-size:72px; font-weight:900; }
+.cv-meta { text-align:left; }
+
+/* ---------- 组件 ---------- */
+.stat .num { color:var(--accent); font-style:italic; }
+.toc-item { border-bottom:1px solid var(--line); }
+.toc-item .no { font-style:italic; color:var(--accent); }
+.toc-item.on { border-left:none; background:transparent; }
+.toc-item.on .tx { color:var(--accent); }
+.flow .fnode { border:1.5px solid var(--accent2); background:var(--card); }
+.ov-rlab { background:var(--ink); }
+.ov-q { border:1.5px solid var(--accent); background:var(--accent-soft); }
+.s-badge { background:var(--accent); font-family:var(--font-d); }
+.s-page { font-family:var(--font-d); font-style:italic; right:50%; transform:translateX(50%); }
+.blist li::before { content:"§"; background:none; color:var(--accent); width:auto; height:auto; top:0; font-size:.9em; }
