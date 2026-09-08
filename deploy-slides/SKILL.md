@@ -185,6 +185,26 @@ curl -s --max-time 25 "https://<主页域名>/teaching/<课程slug>/session-1/in
 
 四步全过才算部署完成；任一步失败先查「异常处理」表，**不要手改部署态 HTML 蒙混**（会被重建覆盖）。
 
+### Stage 8 — 公开便携化发布（把本 skill 发到公开仓库）
+
+上面 Stage 0–7 全程在本机 live 版（含真实路径/实例值）上跑。若要把**本 skill 本身**发布到公开仓库（如 GitHub monorepo）供他人复用，先做 **PII 便携化**：把实例值替换为占位符，保证公开树 0 个 PII 命中。
+
+本 live 版保留真实路径（本机排障用）；**便携化的改写只发生在公开工作副本，不回写 live**，两版内容从此有占位化差异（设计内）。完整配方见 `references/portable-publish.md`，要点：
+
+```bash
+# ① 用断言脚本做占位化改写（编辑 script 内 old→new 映射后运行）
+python3 scripts/scrub_placeholders.py          # 输出 ALL SCRUB PASSED
+# ② 全树 PII 回归扫描（务必 -E + |，macOS BSD grep 不用 \|）
+#    下面 grep 的 token 是**占位符教学示例**——使用者在自己的机器上换成自己的路径/名称值
+grep -rnE '<本机绝对路径>|<用户主目录>|<云同步目录品牌>|<学校名>|<课程名>|<你的用户名>|<你的域名>|<COS桶名>|<COS区域>|<课程slug>|<课程目录名>|<你的邮箱>|sk-[A-Za-z0-9]{6}|AKIA|PRIVATE KEY' . --exclude-dir=.git
+# ③ fetch 后必须对远端新提交做 PII 复验（防历史遗留脏提交）
+git fetch origin && git grep -nE '<敏感token>' origin/main -- .
+# 若无分叉且远端有脏提交，force-with-lease 覆盖；有分叉则 rebase 后再推
+```
+
+> grep 命令中的 token 是**可复用占位符教学示例**——使用者在自己的机器上替换为真实的路径/名称（`portable-publish.md` 有同款模板）。
+> ⚠️ 2026-09-08 实测教训：远端曾有一个同主题提交**没 scrub**，含 30+ 处实例值已公开。只信本地状态会漏掉它。必须对 fetch 到的远端 ref 复验。
+
 ## 异常处理（成功 / 失败 / 重试）
 
 ### 成功判定标准（每阶段各自）
@@ -226,5 +246,8 @@ curl -s --max-time 25 "https://<主页域名>/teaching/<课程slug>/session-1/in
 ## 参考
 
 - `references/cos-upload.md` — COS 上传完整配方（rclone 已配置 + coscmd/SDK 备选、幂等命令、密钥管理、失败重试）。
+- `references/portable-publish.md` — 把本 skill 发布到公开仓库的 PII 便携化配方（占位符体系、六步流程、常见坑）。
 - `scripts/check_cos_env.py` — Stage 0 环境/密钥检查脚本。
+- `scripts/cos_sync.py` — COS 幂等上传（SDK 备选，coscmd 不可用时用）。
+- `scripts/scrub_placeholders.py` — Stage 8 PII 占位化断言脚本（`sub1`/`subN`/`forbid` 三函数）。
 - `lecture-slides` skill 模块 G（`references/deploy-slimming.md`）— 四个执行器的完整设计、trims.json schema、重建重放 procedure、实战陷阱。
