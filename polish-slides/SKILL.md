@@ -11,7 +11,7 @@ agent_created: true
 课件打磨闭环：讲师在双语逐字稿对照页逐页记录意见，点「导出意见」把 feedback.json 的当前意见按合并规则并入 `02-script/data/feedback-history.json`（新意见→新增 unsolved；完全相同→跳过；同槽位少量文字差异→不覆盖原条目，差异另存为 `key#2` 新记录）。本 skill 每次运行时**从 feedback-history.json 读取全部 `status:"unsolved"` 条目作为任务队列** → 解析 → 路由 → 全局润色 → 重建验收 → 把已成功修复的条目打上 `solved`。
 
 - **收集端（已完成，见前端）**：`02-script/index.html` 每页卡片含两个 textarea（`ppt` / `script`）+ 上下各一个「＋插入」按钮（`insert-before` / `insert-after`）。所有输入即时写 localStorage，`600ms` debounce 后 POST `/api/save-feedback` —— **只写临时存储 feedback.json**。
-- **导出按钮行为**：点击「导出意见」→ POST `/api/export-feedback` 把 feedback.json 当前意见合并进 feedback-history.json → 剪贴板复制的是 **history 文件路径尾段**（从 `lecture-xx` 目录组件起，如 `lecture-01-introduction/02-script/data/feedback-history.json`）。
+- **导出按钮行为**：点击「导出意见」→ POST `/api/export-feedback` 把 feedback.json 当前意见合并进 feedback-history.json → 剪贴板复制的是 **history 文件路径尾段**（从 `lecture-xx` 目录组件起，如 `<课程根>/02-script/data/feedback-history.json`）。
 - **本 skill 负责**：读 history 的 unsolved 队列 → 路由 → 全局润色（含前后插入新页）→ 重建验收 → 打 solved。
 
 ## 前置依赖
@@ -19,7 +19,7 @@ agent_created: true
 - **`prompt-optimizer` skill（提示词增强，强制前置步骤，见 Workflow 第 2 步）**：所有意见在应用前必须先经它增强。
 - **`video-download` skill（含视频链接意见的前置，见 Workflow 第 3 步）**：处理含 YouTube/Bilibili 链接的 `ppt` / `insert-*` 意见时，先按它把视频下载到本地再落 deck。
 - 复用 `lecture-deck-pipeline` 的构建与验收脚本（`deck_builder.py` / `check_deck.mjs` / `final_accept.mjs`）。
-- 目录约定、notes 单一数据源、file:// 硬约束、云同步目录（如 OneDrive）覆写规则等**全部沿用** lecture-deck-pipeline 的 SKILL.md，不在此重复。
+- 目录约定、notes 单一数据源、file:// 硬约束、云同步目录覆写规则等**全部沿用** lecture-deck-pipeline 的 SKILL.md，不在此重复。
 
 ## 意见的存储契约（前端 ↔ 本 skill 的接口）
 
@@ -87,7 +87,7 @@ agent_created: true
 polish-slides <feedback-history.json 路径>
 
 # 例（从课程目录起算；讲师页「导出意见」按钮复制到剪贴板的即是此类路径）
-polish-slides lecture-01-introduction/02-script/data/feedback-history.json
+polish-slides <课程根>/02-script/data/feedback-history.json
 ```
 
 - 首选传 feedback-history.json 路径。若传入的是 feedback.json（旧习惯），取其**同目录的 feedback-history.json** 作为任务队列。
@@ -149,7 +149,7 @@ node final_accept.mjs <course>/03-slides
 ```
 
 ### 6. 回写状态（solved）
-应用并通过验收后，把本次成功修复的每条记录（第 1 步记下的 `key`）改为 `status:"solved"` + `resolved_at`，**原子写回** feedback-history.json（临时文件 + `os.replace`；云同步目录（如 OneDrive）上先写 /tmp 同分区临时文件再 os.replace 会跨设备，直接用同目录临时文件）。失败的条目保持 `unsolved` 并在回复中说明原因。**不要**动 feedback.json——它只是前端当前页的临时存储，清空与否由讲师在页面上操作。
+应用并通过验收后，把本次成功修复的每条记录（第 1 步记下的 `key`）改为 `status:"solved"` + `resolved_at`，**原子写回** feedback-history.json（临时文件 + `os.replace`；云同步目录上先写 /tmp 同分区临时文件再 os.replace 会跨设备，直接用同目录临时文件）。失败的条目保持 `unsolved` 并在回复中说明原因。**不要**动 feedback.json——它只是前端当前页的临时存储，清空与否由讲师在页面上操作。
 
 ## 关键坑
 

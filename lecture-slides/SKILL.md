@@ -1,6 +1,6 @@
 ---
 name: lecture-slides
-description: 制作 HTML 课件 / Lecture Slides 的完整体系，风格唯一：04-magazine 杂志排版风（米色纸面、衬线大标题、圆角卡片 + 顶部强调线、嵌套去重），并含 Keynote 式演讲者模式（观众屏全屏 + 演讲者屏预览/文稿/双进度条，按讲稿语速估算实时对比讲课节奏，file:// 双击可用），字体/媒体全离线本地化（VF 子集化，任何电脑断网打开完美复现），以及质量门禁与进阶组件（媒体框宽高比审计、布局平衡/留白审计、多页递进图像素对齐、视频片段编辑器 start/end 持久化），和从 151 条真实排版反馈归纳出的默认排版规律（Layout Doctrine：媒体主角放大、卡片等比不裁剪、砌砖无缝铺满、文字窄列让位、中英对照体系、渐进揭示动画）。当用户提到"做课件""lecture slides""课件样式/风格""框体样式统一""嵌套边框重复""演讲者视图""演讲者模式""双屏放映""presenter view""双进度条""讲课节奏""杂志风/编辑风课件""字体本地化""离线打开""自包含课件""排版优化""内容堆顶部/留白""媒体框比例/宽高比""递进图对齐""视频片段/剪辑区间""排版规律""布局偏好""媒体放大/铺满""砌砖布局""图文混排""卡片编辑器""改卡片/移动卡片""删卡片""缩放卡片""替换媒体""裁剪媒体""四角控件""编辑课件元素""cardmove/cardresize/carddel""slide-edits 落盘"时使用。适用于任何基于 CSS class 的静态 HTML 幻灯片/模板体系。
+description: 制作 HTML 课件 / Lecture Slides 的完整体系，风格唯一：04-magazine 杂志排版风（米色纸面、衬线大标题、圆角卡片 + 顶部强调线、嵌套去重），并含 Keynote 式演讲者模式（观众屏全屏 + 演讲者屏预览/文稿/双进度条，按讲稿语速估算实时对比讲课节奏，file:// 双击可用），字体/媒体全离线本地化（VF 子集化，任何电脑断网打开完美复现），以及质量门禁与进阶组件（媒体框宽高比审计、布局平衡/留白审计、多页递进图像素对齐、视频片段编辑器 start/end 持久化），和从 151 条真实排版反馈归纳出的默认排版规律（Layout Doctrine：媒体主角放大、卡片等比不裁剪、砌砖无缝铺满、文字窄列让位、中英对照体系、渐进揭示动画）。当用户提到"做课件""lecture slides""课件样式/风格""框体样式统一""嵌套边框重复""演讲者视图""演讲者模式""双屏放映""presenter view""双进度条""讲课节奏""杂志风/编辑风课件""字体本地化""离线打开""自包含课件""排版优化""内容堆顶部/留白""媒体框比例/宽高比""递进图对齐""视频片段/剪辑区间""排版规律""布局偏好""媒体放大/铺满""砌砖布局""图文混排""卡片编辑器""改卡片/移动卡片""删卡片""缩放卡片""替换媒体""裁剪媒体""四角控件""编辑课件元素""cardmove/cardresize/carddel""slide-edits 落盘""部署发布""媒体瘦身/压缩""视频裁剪""图片转 webp""trims.json""04-deploy 镜像""source 不动 deploy 裁剪""学生版发布到主页""COS 发布""build_publish""多屏路由""双屏窗口落位""看片台""缩略图""元素序号标注""#序号 定位""放映服务"时使用。适用于任何基于 CSS class 的静态 HTML 幻灯片/模板体系。
 agent_created: true
 ---
 
@@ -11,11 +11,13 @@ agent_created: true
 为课件（HTML Lecture Slides）提供三大能力，均以 **04-magazine 杂志排版风**为唯一视觉标准：
 
 - **模块 A · 版式风格**：整套 04-magazine 期刊质感——米色纸面（`#f7f2e8`）、衬线大标题（Playfair Display + Noto Serif SC）、深红强调线（`#a5281b`）；所有框体统一为「细边 + 顶部 3px 强调线 + 12px 圆角 + 柔和投影」，嵌套结构 `:is()` 双段重置规则使只有**最外层**容器带强调线
-- **模块 B · 演讲者模式**：Keynote 式双屏（观众屏全屏 + 演讲者屏预览/文稿），postMessage 跨窗口同步（file:// 可用），双进度条以讲稿语速估算实时显示讲课节奏；单屏环境自动退化为正常放映
+- **模块 B · 演讲者模式**：Keynote 式双屏（观众屏全屏 + 演讲者屏预览/文稿），postMessage 跨窗口同步（file:// 可用），双进度条以讲稿语速估算实时显示讲课节奏；单屏环境自动退化为正常放映。多屏窗口落位（观众 deck 去扩展屏、presenter/逐字稿去鼠标所在屏）见 B5 与 `references/multi-screen-routing.md`
 - **模块 C · 离线本地化**：字体（VF + 按课件字符集子集化，每家族 1 个 woff2，全 deck 约 0.8MB）与媒体资源（按「页号-序号」命名收编）全部内嵌，整套文件夹拷贝到任何电脑断网 file:// 双击打开，渲染与在线版一致
 - **模块 D · 质量门禁与进阶组件**（固定舞台 deck）：媒体框宽高比审计（容器贴合媒体真实比例）、布局平衡审计（"内容叶子"法，消除内容堆顶/底部大留白）、多页递进图像素对齐（同一元素连续各页 rect 全等）、视频片段编辑器（✂ 按钮设定 start/end，localStorage 持久化按片段播放）、final_accept 全链路 E2E
 - **模块 E · 默认排版规律（Layout Doctrine）**：从 151 条真实排版反馈归纳出的**强制默认布局偏好**——媒体主角放大（≥80% 高度）、卡片等比不裁剪、砌砖无缝铺满、文字窄列让位（≤1/3 宽）、元素网格对齐咬合、中英对照体系、头像卡 80%、渐进揭示动画、稀疏页删除。**任何新建/修改课件页面时默认按此规律排版**，除非用户当次明确要求例外。
 - **模块 F · PPT 卡片编辑器（02-script 编辑器）**：讲师在预览 iframe 里对**卡片**（figure 整卡）做移动 / 删除 / 缩放 / 裁剪 / 替换，四角常驻控件 + 左下放射菜单，保存后经 `slide-edits.json` journal 落盘、重建镜像重放。完整设计见 `references/card-editor.md`。
+- **模块 G · 部署发布与媒体瘦身（04-deploy 双轨）**：03-slides = 权威完整源永不改动，04-deploy = 唯一可裁部署镜像。视频裁剪（`trims.json` 登记 + `apply_trims.py`）、未裁剪原片二压瘦身（`slim_videos.py`）、图片转 WebP（`slim_images.py`）、学生网页播放版发布到主页（`build_publish.py`）。完整设计见 `references/deploy-slimming.md`。
+- **模块 H · 02-script 工作台配套**：逐字稿编辑工作台的日常工具——元素序号标注（意见写 `#序号` 定位）、看片台（76 页缩略图网格 + 跨 Session 拖拽重排）、缩略图管线（shoot_thumbs 三模式 + 增量 since-solved）、放映服务版本提示（postJSON）。完整设计见 `references/workbench-tools.md`。
 
 **不再提供其他风格**——本 skill 只输出这一种视觉体系；颜色、字体、圆角等 tokens 直接取用，不做主题适配。**排版行为同样不再逐次摸索**——模块 E 是默认行为，第一版排版就要符合。
 
@@ -27,7 +29,7 @@ agent_created: true
 
 ### Step 0 — 判定模块
 
-用户只谈版式/样式 → 仅模块 A；谈演讲者视图/双屏/节奏 → 仅模块 B；谈离线/拷给别人/字体嵌入 → 仅模块 C；谈排版优化/留白/媒体框比例/递进图对齐/视频片段 → 模块 D；**新建课件页面 / 生成第一版讲义页 / 未指定排版要求时 → 默认套用模块 E 的 Layout Doctrine**；谈编辑课件元素/移动删除缩放卡片/替换裁剪媒体 → 模块 F；完整课件交付 → 全做（E 默认生效，D 负责验收）。
+用户只谈版式/样式 → 仅模块 A；谈演讲者视图/双屏/节奏 → 仅模块 B；谈多屏窗口落位（观众 deck 去扩展屏、presenter 去主屏）→ 模块 B5；谈离线/拷给别人/字体嵌入 → 仅模块 C；谈排版优化/留白/媒体框比例/递进图对齐/视频片段 → 模块 D；**新建课件页面 / 生成第一版讲义页 / 未指定排版要求时 → 默认套用模块 E 的 Layout Doctrine**；谈编辑课件元素/移动删除缩放卡片/替换裁剪媒体 → 模块 F；谈部署/媒体瘦身/视频裁剪/图片转 webp/发布到主页/学生版 → 模块 G；谈元素序号标注/看片台/缩略图/放映服务 → 模块 H；完整课件交付 → 全做（E 默认生效，D 负责验收）。
 
 ### 模块 A — 应用 04-magazine 风格
 
@@ -78,6 +80,8 @@ NODE_PATH=<含 playwright 的 node_modules 所在目录> \
 
 **B4 验收**：起 HTTP 服务（服务根 = 媒体相对路径可达的目录），Playwright 断言——开窗连通（ind/notes/dot）、双窗双向翻页同步、预览 iframe 收敛、双进度条分段数/刻度数/当前段高亮跟随翻页、End 后双条分化（fillContent ≫ fillTime）、pace 徽标文案、布局尺寸；file:// 冒烟只断言父页 DOM。
 
+**B5 多屏窗口路由**：双击 `play.command` 放映时把三窗口自动落对屏幕——观众 deck 去扩展屏、presenter 与逐字稿去**鼠标所在屏**。要点：主屏 = 鼠标所在屏（非系统主屏语义）；Cocoa↔窗口坐标翻转换算 `y窗口 = H-(y+h)`；`pv*` 传参链（`?pvx/pvy/pvw/pvh` → `pvTarget()` → `routeToPrimary()/fitTarget()`）；TCC 自动化权限（沙箱内只能 `bash -n` + `osacompile` 编译验证，真实落位需用户真机双击验收）。完整设计见 `references/multi-screen-routing.md`。
+
 ### 模块 C — 离线本地化（字体 + 媒体自包含）
 
 **C1 媒体收编**：课件目录下建 `media/{images,videos}/`，所有引用按「页号-页内序号」重命名收编；
@@ -124,7 +128,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 
 ### 模块 E — 默认排版规律（Layout Doctrine，强制默认）
 
-> 来源：`lecture-01-introduction` 课程 151 条已解决的排版反馈（2026-08~09，六轮 polish 定稿）+ 最终代码形态核验（S2.05/S2.06/S2.28/S3.06/S3.12d/S3.15/Failure Gallery）。以下规则是**用户排版审美的默认值**——生成任何新页面时直接按此排版，第一版就要符合，不逐次试探。频率最高的不满词是"太空了"；频率最高的指令是"铺满/撑满/拉满/等宽/对齐/不裁剪"。
+> 来源：真实课程项目 151 条已解决的排版反馈（2026-08~09，六轮 polish 定稿）+ 最终代码形态核验（S2.05/S2.06/S2.28/S3.06/S3.12d/S3.15/Failure Gallery）。以下规则是**用户排版审美的默认值**——生成任何新页面时直接按此排版，第一版就要符合，不逐次试探。频率最高的不满词是"太空了"；频率最高的指令是"铺满/撑满/拉满/等宽/对齐/不裁剪"。
 
 **E1 媒体主角原则（图/视频优先于文字）**
 - 页面只要含媒体，媒体就是视觉主体。目标高度 ≥80% 可用 body 高度（多图 90–100%），横版大图直接 100% height。
@@ -193,6 +197,29 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **四角防重叠三层**：卡内偏移 8px + 并查集连通分量档位（8/34/60/86px）+ 同卡上下两排硬约束 `off ≤ (minSide−48)/2`；minSide<70 时控件 scale(0.66)。
 - **落盘 op 语义**：`cardmove{left,top}` / `carddel` / `cardresize{w,h,fs}` / `crop{ox,oy,zoom}` / `replace{src}`，绝对值幂等；`index` 是同标签局部序号（非混合序号）。Esc 退出不落盘。
 
+### 模块 G — 部署发布与媒体瘦身（04-deploy 双轨）
+
+完整设计见 `references/deploy-slimming.md`。核心契约：
+
+- **两条铁律**：① 03-slides = 权威完整源，视频不裁剪、deck HTML 不改、VIDEO_CONFIG 数值不改，✂ 标记只登记进 `03-slides/media/trims.json`；② 04-deploy = 唯一可裁部署镜像，所有物理裁剪与 VIDEO_CONFIG 改写只发生在这里。
+- **四个执行器（职责不重叠，均默认 dry-run，`--apply` 才动手）**：
+  - `04-deploy/apply_trims.py` — 按 trims.json 物理裁剪 confirmed 视频 + 改写镜像 VIDEO_CONFIG（`0..新时长`）
+  - `tools/slim_videos.py` — 未裁剪高码率原片二压瘦身（CRF24），与裁剪互补不重叠
+  - `tools/slim_images.py` — gif→animated WebP、png→WebP，改写 04-deploy 的 index.html 引用
+  - `tools/build_publish.py` — 从 04-deploy 生成学生网页播放版（COS 绝对 URL + presenter/✂ 禁用），发布到主页 repo
+- **统一质量档位**：`libx264 CRF 24 + preset medium + yuv420p + -c:a copy + -movflags +faststart`，保证未裁剪原片与已裁剪片段在同一视觉质量带。
+- **放映链路**：本地双击课程根 `play.command`（服务根 = 课程根），观众 deck URL 切到 `/04-deploy/session-N/`。**必须由课程根 serve**，别把 04-deploy 单独当 server 根（否则 notes 404）。
+- **重建镜像后重放**：03-slides 变动 → rsync 重建 04-deploy → 重跑 apply_trims + slim_images + slim_videos → build_publish。全程幂等，重复运行安全。
+
+### 模块 H — 02-script 工作台配套
+
+讲师打磨课件的日常工具，都落在 `02-script/index.html` + `play.command`，与模块 F（卡片编辑器）同属「编辑工作台」体系。完整设计见 `references/workbench-tools.md`：
+
+- **元素序号标注（elnum）**：聚焦 `textarea[data-fb="ppt"]` 时同源 iframe 当前页元素叠加序号徽标，意见写 `#序号` 指认；`elnumCollect` 折叠规则决定「什么算一个可指认单元」，历史推断只改徽标配色不改编号。
+- **看片台（board）**：76 页缩略图一屏网格 + 跨 Session 拖拽重排，保存走 `/api/reorder-slides` → 重建 deck → 自动回看片台。
+- **缩略图管线（shoot_thumbs.cjs）**：sid 寻址 + `#/K/99` 直达最终展开态；三模式 `full` / `missing` / `since-solved`（增量，依赖 `resolved_at` 时间戳）；子进程必须注入 `NODE_PATH`。
+- **放映服务版本提示（postJSON）**：放映服务是旧 Python 进程时新路由回 404 HTML，`res.json()` 解析报晦涩错误——前端须对非 JSON 响应做「请重新双击 play.command」提示。
+
 ## Pitfalls
 
 - **不要用 JS 逐元素加类**：纯 CSS `:is()` 祖先-后代结构即可表达"嵌套深度 ≥ 1"，零 DOM 改动
@@ -205,14 +232,20 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **预览 iframe 首帧带 `#/N` hash 直达当前页**，避免闪第 1 页
 - **悬停显现的按钮（`opacity:0; pointer-events:none`）不可交互**：Playwright hit-target 检测在鼠标移动前就失败，触屏也不可用——用常驻低透明度（.18）+ hover 加深
 - **本地 HTTP server 必须 run_in_background 持久启动**：普通命令里 `cmd &` 会随 shell 退出被回收，下一条命令连接被拒
-- **云同步目录（如 OneDrive）文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
+- **云同步目录文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
 - **BSD grep 的 `\|` 交替静默失败**：用 `grep -E`；验证文案存在与否的正则要宽松，过严会把已落地内容误报为缺失（先读原文再定论）
 - **模块 E 是默认值不是可选项**：新建页面时直接按 Layout Doctrine 排版，不要先做"常规布局"再等用户反馈改——用户对此类反复调整的成本已明确表达过不满。唯一例外：用户当次指令明确要求不同做法
 - **"填满"与"不裁剪"冲突时的优先级**：先保 `object-fit:contain` 完整画幅（E2），再通过补图/补媒体把空间填满（E5），绝不靠 crop 或拉伸变形来凑满
-- **同文件多处修改严禁并行 Edit**（OneDrive 目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
+- **同文件多处修改严禁并行 Edit**（云同步目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
 - **E2E 断言查视觉值（getBoundingClientRect）而非仅内联值**：flex-basis / transform 等会让内联 `style.*` 落下但视觉不变，只断言内联值会假通过
 - **getBoundingClientRect 返回 transform 后视觉盒**：stage scale 缩小不改变元素中心；计算「两控件是否重叠/相距多远」要用视觉值，别用布局值
 - **「某按钮没显示」先 dump DOM 判断是否真未渲染**：常见根因是坐标/层级重叠（后被渲染的兄弟盖住它），不是条件判断/样式/事件绑定问题
+- **改写 VIDEO_CONFIG 后必须抽块 `node --check`**（模块 G）：正则 group 已含花括号时替换内容绝不能自带 `{}`，否则叠成 `{{...}}` 双括号，JS 对象字面量直接 SyntaxError 打崩整页。只 grep 目标数字会漏掉这类结构错误
+- **裁剪/瘦身产物只落 04-deploy**（模块 G）：任何 `.slim.mp4` / `.trimming.mp4` / `.orig.mp4` / `.webp` 都不该出现在 03-slides——03-slides 是回退的干净源
+- **双视图剪辑存档键必须归一化**（模块 D4）：`SEG_STORE` 用 `location.pathname` 生成，观众窗口（`…/session-N/`）与演讲者预览 iframe（`…/session-N/index.html`）会生成两个不同键，剪辑不互通。必须 `normPath()` 归一化 + `migrateSegKeys()` 旧键迁移 + `storage` 事件监听（非写入方即时 `setupVideos()` + seek + `playVideos()`）。详见 `references/segment-editor.md` 关联坑
+- **自起服务加接口必须做非 JSON 版本提示**（模块 H）：`play.command` 这类脚本自起服务的旧 Python 进程「静态文件即时生效、进程不会」，新路由回 404 HTML 被 `res.json()` 解析报 `Unexpected token '<'`。前端统一 `postJSON` 封装，响应 `Content-Type` 非 JSON → 提示「放映服务是旧版本，请重新双击 play.command」
+- **GIF→WebP 用 Pillow 必须逐帧收集 duration**（模块 G）：Pillow 12 的 `WebPImagePlugin._save_all` 只在打开时读一次 duration，不传 list 会全帧压成第一帧时长（总时长漂移）。逐帧收集 `gd=[im.info["duration"]...]` 后 `save(..., duration=gd, loop=0, method=6, quality=80)`；libwebp 会合并「逐像素等于前一帧」的 hold 重复帧，容器帧数可能少于源 GIF——是合并不是丢帧
+- **Playwright `page.evaluate(fnString, arg)` 不会自动调用字符串函数**（模块 H）：必须传真函数值或 IIFE 字符串，否则拿到的只是函数体文本
 
 ## Resources
 
@@ -239,6 +272,15 @@ reveal.js deck 接入演讲者模式的适配器参考（`__deck` 桥接、`__hw
 
 ### references/card-editor.md
 模块 F PPT 卡片编辑器完整设计：卡片语义（figure 整卡 + 链式上溯）、四角控件、防重叠三层、放射状 1/4 扇形菜单、宽高独立缩放与 flex-basis 根因、裁剪/替换、落盘 op 语义、E2E 验证与调试教训。
+
+### references/deploy-slimming.md
+模块 G 部署发布与媒体瘦身完整设计：03-slides/04-deploy 双轨与两条铁律、trims.json schema、四个执行器（apply_trims / slim_videos / slim_images / build_publish）职责边界、放映链路、重建镜像重放 procedure、实战陷阱。
+
+### references/multi-screen-routing.md
+模块 B5 多屏窗口路由完整设计：主屏 = 鼠标所在屏语义、Cocoa↔窗口坐标翻转换算、JXA 读屏探测协议、`pv*` 传参链、presenter 双层主屏路由、TCC 自动化权限限制、竖屏适配、构建链与验收 marker。
+
+### references/workbench-tools.md
+模块 H 02-script 工作台配套完整设计：元素序号标注（elnumCollect 折叠规则 + 历史推断）、看片台（76 页网格 + 跨 Session 重排 + reorder-slides API）、缩略图管线（shoot_thumbs 三模式 + since-solved 增量 + NODE_PATH 坑）、放映服务版本提示（postJSON）。
 
 ### scripts/audit_aspect.mjs
 媒体框宽高比审计（`node audit_aspect.mjs <deck_dir>`）：img/video 原始比例 vs `.fv` 容器渲染比例，阈值 1.12，输出失配清单。
