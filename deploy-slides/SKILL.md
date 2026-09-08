@@ -83,7 +83,27 @@ agent_created: true
 
 > 通用纪律：**每一步先 dry-run / 先检查，确认无误再 `--apply` / 真传 / commit**。执行器均幂等，重复运行安全。媒体改动**只落 04-deploy**，03-slides 永不碰。
 
-### Stage 0 — 环境与前置检查
+### Stage 0 — 文件清理与环境前置检查
+
+#### 0a. 文件清理（部署前必做）
+
+部署前先整体清一遍，避免旧文件/中间产物混进发布流。**原则：对 slides 播放无直接关联的旧文件一律归档（只移动、不删除）；纯垃圾（自动再生的）可直接删。**
+
+1. 全课程仓扫描候选（排除 `.workbuddy/` 与已归档目录）：
+   - 旧版本/备份：`*.bak`、`*.orig.*`、`*.pre-*.bak`、`*.polished.json` 等无引用的旧快照
+   - 一次性脚本：`_verify_*`、`audit_*`、`build_merge_map*`、`write_merge_map*` 等无引用的验证/生成脚本
+   - 中间产物：`tmp_media/`、`replica/`、`merge-map.draft.*`、`merge-map.v1.*` 等 staging/旧版
+   - 纯垃圾（可直接删）：`.DS_Store`、`__pycache__/`、`*.pyc`、`*.tmp`、`*~`
+
+2. **`.bak` 一律归档，不逐个确认**（作者 2026-09-08 确立的惯例）：`mv` 到各 lecture 的 `_archive/`（镜像原相对路径）；跑完 `find . -name '*.bak' -not -path '*/.workbuddy/*' -not -path '*/_archive/*'` 应剩 0。
+
+3. 归档前 grep 判定「是否被引用」：`play.command` / `index.html` / `build.py` / `deck_builder.py` 等运行时/管线读取的文件**不归档**。active 数据文件（`session{N}.json`、`deckmeta.js`、`feedback*.json`、`slide-edits.json`、`merge-map.json` 等）必须保留原位。
+
+4. 归档目录统一命名 `_archive/`，附 `README.md` 记录清单与理由；纯垃圾（`.DS_Store`/`__pycache__`/`.pyc`）直接删除（编译器/系统会自动重建，属正常）。
+
+5. 清理后自检：active 数据文件逐一在位、引用路径有效，`play.command` 放映链路不受影响。
+
+#### 0b. 环境工具检查
 
 ```bash
 # 媒体工具齐不齐
