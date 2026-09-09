@@ -144,6 +144,37 @@ function fitCues() {
 cues 是正文骨架、OUT 回答「怎么收尾」、facts 是可引用的数字/名词。`cueCardHTML()`
 必须按此顺序拼接；`fitCues()` 的测量选择器要包含 `.cue-in` 与 `.cue-out`。
 
+### `q` 字段：本页在回答什么问题（补写工作流）
+
+`q` 是每张卡的**内容类型标记**，回答「这页在回答什么问题」，渲染在卡片最顶部
+（presenter 的 `.cue-q`、02-script 的 `.cue-lang .q`）。它不是统一比例——L1 按 session
+分布极不均：S1 开场叙事 1/27、S2 历史/里程碑 9/28、S3 课程信息 21/21。
+
+**数据模型**：`{slideId: {en: {q, lines[], enter, exit, facts}, zh: {...}}}`，
+`q` 与其它字段同级，**只改 `en.q` / `zh.q` 两个叶子**，逐字稿本体
+（`session{N}.json`）与其余字段字节不动。
+
+**格式硬约束**（照 L1 范式校准，31 条 `q` 零例外）：
+
+| 项 | EN | ZH |
+|---|---|---|
+| 句式 | 小写开头疑问句 | 疑问句 |
+| 标点 | **不带问号** | **不带问号** |
+| 长度 | 5–11 词（median 7） | 6–28 字（median 12） |
+
+**疑问句判定用「含」而非「开头」**：L1 存在 `faces in 1999 — what about bodies`
+这类前置名词结构，判 `EN_WH` 要全串搜索，不能锚定首词。
+
+**留空规则**（L1 范式核对得出，两条容易搞反）：
+
+- 标题本身已是疑问句 → **不填** `q`（`S1.10 What Is Human Digitization?` 无 `q`）
+- 标题是名词短语但页面在回答一个问题 → **填** `q`（`S1.09 The Uncanny Valley` 有 `q`）
+- Cover / 纯图片页 → 不填
+
+**生成流程**（分片写 patch → 门禁 → apply → e2e，见 `references/cue-q-workflow.md`）：
+单次写满全部条目会触发输出截断，必须**一文件一校验**小步推进；
+`_q_targets.json` 是建议上限而非硬指标，只写实际判断过的页。
+
 ### 同一改造要同步到 02-script（逐字稿工作台）
 
 `02-script/index.html` 的 cue cards 与 presenter 同源，**两处改造必须两边都做**：

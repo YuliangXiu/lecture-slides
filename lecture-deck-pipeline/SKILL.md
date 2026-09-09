@@ -113,3 +113,90 @@ agent_created: true
 - **脚本自检教训**：字面串残留检查用 `in`，别把含 `.` 的字面串传 `re.search`（`.` 通配会把 COS URL 里 `01/media/decks/` 误判成 `../media/decks/`）；「演讲者视图」字样在注释里也有，只有按钮 DOM regex（`<button[^>]*data-act="pres"`）是真判据。
 - **更新流程**：改 notes JSON（免重建）→ 重跑 build_publish + commit/push；deck 重建/媒体改动 → 重跑 build_publish + rclone 增量 → push。公开仓库推送前做 PII 审计（课程邮箱属 Reach Us 设计内容，不算泄露）。
 - **线上验收基线**：各 deck 页数正确、presBtn/segBtn 均无、notes=ok、COS 图 broken=0、JS 0 错误；官网 materials 正常渲染 Session 按钮。
+
+## 看片台（缩略图墙）工程教训（2026-09-09）
+
+- **`02-script/index.html` 是生成产物，严禁手工编辑**——唯一权威源是 `_shared/viewer/viewer.template.html` + `build_viewer.py` 的 COURSES 参数集。改产物 = 制造漂移，下次 `--all` 直接覆写。**改完模板必须重建**：`python3 build_viewer.py --all --repo-root "<课程根>"`。
+- **`--repo-root` 必须指向直接含 `lecture-*` 的那一层（2026-09-09 加守卫）**：误传 `_shared` 会静默生成 `_shared/lecture-0X-*/02-script/index.html` 幽灵产物——内容正确、位置非法、无人引用，排查很费时间。现在 `_resolve_repo_root()` 会校验目录存在、含 `lecture-*`、且不在 `_shared` 内，违反直接 `SystemExit`；单课程 `--root` 同样禁止落在 `_shared` 内。发现 `_shared/lecture-*` 一律视为残留（非权威源，md5 与正确产物相同也只是巧合），用 `trash` 清掉，不要 `rm`。
+- **从产物反推模板的可靠手法**（当只有产物被改过、模板是旧版时）：以已验证产物为蓝本，把 6 个 token 的**已解析值**反替换回去（`__TITLE__`/`__H1_EN__`/`__H1_ZH__`/`__SESSIONS_TEXT__`/`__SESSION_LIST__`/`__COURSE_DIR__`），写完用 `re.findall(r"__[A-Za-z0-9_]+__", s)` 校验残留；再重建产物与备份做 `diff -q`，必须逐字节一致。注意 `__SESSION_LIST__` 与 `__COURSE_DIR__` 各出现 2 处。
+- **【核心坑】`aspect-ratio` + 百分比宽度不可放进 CSS Grid 轨道**：grid 轨道尺寸计算阶段，item 的 inline size 依赖轨道宽度、`aspect-ratio` 又依赖 inline size → 循环依赖，Chrome 把 block size 贡献当作 0 → 行轨道塌成 2px、卡片全部重叠。`minmax(0,1fr)` 和 `1fr` 两种写法**都塌**，改列定义无效。唯一解：`display: flex; flex-wrap: wrap` + `.bcell { flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols) - 0.02px); aspect-ratio: 16/9 }`，`.bsep { flex: 0 0 100% }`，`img` 绝对定位（`position:absolute; inset:0`）切断其参与高度计算。`-0.02px` 是亚像素余量，防 6 个恰好 100% 的项因浮点误差把最后一个挤到下一行。
+- **E2E 几何断言必须校验矩形不重叠**：用 `Math.round(rect.top)` 分组算「每行 ≤N」在行塌陷时会**假通过**（同排卡片 top 相同被当成同一行）。必须同时断言：行内 `row[i].l < row[i-1].r - 0.5` 计数为 0（横向不重叠）、相邻行 top 差 ≥ 行高 - 1（纵向不重叠）、`cellH >= 90`（非塌陷）、`img` 实际渲染高度 ≥ 80。
+- **看片台每行上限**：`bestGrid(W)` 的 `MAX_COLS = 6` 硬上限 + 由窗口宽度反推（`MIN_CELL=176, GAP=10, PAD=54`），**不再按页数反推高度压进一屏**；总高超出由 `.board-grid` 纵向滚动承担。列宽公式必须把 gap 算进去：`c = floor((avail + GAP) / (MIN_CELL + GAP))`（漏算 gap 会导致实测 cellW 偏小）。
+- **跨 Session 拖拽后必须 `resyncBoardSess()`**：`data-sess` 建卡时写死、拖拽后不更新，会让筛选（按 `data-sess` 显隐）与分隔条计数用过期归属。以 DOM 里最近的前一个 `.bsep` 为准回写，在拖拽 `up` 时调用。筛选只改 `display`、DOM 线性序不动，`boardCommit` 的全排列校验才不受影响。
+- **多 session 硬编码清理**：`boardCommit` 的 `all` 要用 `Object.keys(orders).reduce(...)` 而非 `[].concat(orders['1'], orders['2'], orders['3'])`；否则 6 session 的 lecture-02 保存重排会丢页。
+- **云同步目录回写覆盖（2026-09-09 实测）**：在云同步路径上写入生成产物后，云端可能把旧版本/冲突版本推回，表现为「构建脚本报 wrote 但文件内容没变」或「刚写对的 L01 产物变回 L02 内容」。**构建后必须立即校验 md5 + 关键标记**（`board-filter`/`MAX_COLS`/`Promise.all([...])` 的 session 列表），并间隔数秒复测稳定性；发现被覆盖就重写并再次校验，不要假设一次写入即落盘。
+  - **更强的自检手法**：不依赖文件 mtime，直接 `import build_viewer; build_viewer.render(key)` 拿内存渲染结果，与落盘内容比 `==`。一致说明落盘就是权威模板的产物，云同步没插进旧版本。
+    ```python
+    import importlib.util, sys, pathlib
+    spec = importlib.util.spec_from_file_location("bv", "build_viewer.py"); bv = importlib.util.module_from_spec(spec)
+    sys.argv = ["build_viewer.py"]; spec.loader.exec_module(bv)
+    out = bv.render("lecture-01")   # 注意 render() 只吃 course_key，不是 (template, cfg)
+    cur = pathlib.Path("<course>/02-script/index.html").read_text(encoding="utf-8")
+    assert out == cur
+    ```
+
+### 回归测试套件（2026-09-09 落盘）
+
+- **位置**：`_shared/viewer/tests/`（`run_all.sh` / `test_board.cjs` / `test_board_drag.cjs` / `lib/harness.cjs`）。此前这些脚本散在 `/tmp/lt02/`，已工程化落盘——**不要再写一次性临时脚本**，改测试请直接改这里。
+- **一键跑**：`cd _shared/viewer/tests && bash run_all.sh`（自动定位仓库根 = 脚本上三级 `tests/ → viewer/ → _shared/ → 根`；`SHOTS=1` 出图到 `/tmp/board-shots/<lecture>/`，`SHOTS_DIR=` 改根目录，`BASE_PORT=9000` 换起始端口）。**截图必须按讲分目录**——两讲同名 `board-all.png` 平铺会互相覆盖。
+- **分层**：`smoke_test_viewer.js` 只验「页面活着」（title/h1/#root/.slide/console），**不覆盖看片台**；看片台行为归 `test_board.cjs`（26 断言）；拖拽归 `test_board_drag.cjs`（7 断言，不写盘）。
+- **期望值数据化**：`lib/harness.cjs` 的 `readExpect(courseDir)` 从 `02-script/data/session*.json` 累加 `sections[].slides[]` 推导总页数与各 session 页数。**禁止在测试里硬编码页数**——讲次增删/页数变动必须自动适配（L01=76 页/3 session，L02=685 页/6 session）。
+- **端口自愈（必守）**：`harness.cjs` 的 `listen(port, tries=50)` 遇 `EADDRINUSE` 自动 `port+1` 重试并返回实际端口；`smoke_test_viewer.js` 的 `pickFreePort()` 同理。**测试不得假设固定端口可用**——用户常同时开着 `play.command`（Python `http.server`，`address_family=AF_INET6` 占 `*:PORT`），会直接撞车。日志里出现 `# port 8400 被占用，改用 8401` 是正常自愈，不是失败。
+- **端口冲突排查**：`lsof -nP -iTCP:<port> -sTCP:LISTEN` 看 PID + `lsof -p <pid> | grep cwd` 看归属；**沙箱里 `ps` 被拒**（`operation not permitted`），只能用 `pgrep -x` / `pgrep -f` / `lsof`。别盲杀——可能是用户正在放映的服务。
+- **几何断言不能只看「每行 ≤N」**：行塌陷时同排卡片 `top` 相同会被算作同一行而**假通过**。必须同时断言横向不重叠（`row[i].l < row[i-1].r - 0.5` 计数为 0）、相邻行纵向不重叠、`cellH >= 90`、`img` 实高 > 50。`GEOM_FN` 已封装。
+- **bash 脚本自检**：`bash -n run_all.sh` 后跑一次真机；仓库根用相对路径上溯时要数清层级（曾少一级 → 解析成 `_shared` → 6 个套件全 ENOENT），并加启动前 `ls "$REPO_ROOT"/lecture-*` 校验。
+
+## 隐藏页（hidden slides）全链路（2026-09-09 落定）
+
+源课件里隐藏的幻灯片要在看片台标为隐藏，**唯一真源是源 `.pptx` 的 `show="0"`**，一路五层传递，任一层漏写就断链：
+
+```
+源 .pptx  show="0"
+  → tools/deck_spec/sessionN.json        pages[].hidden
+  → tools/content/sessionN_content.py    'hidden': True
+  → 02-script/data/sessionN.json         slides[].hidden
+  → deck 产物 <section … data-hidden="1">
+```
+
+- **反查源 pptx**：`python-pptx` 遍历 `slide.element` 找 `show == '0'`（备注里"这张幻灯片在源课件中是隐藏页。"是辅助线索，不是判据）。
+- **L2 基线**：S1=10 / S2=7 / S3=0 / S4=6 / S5=43 / S6=25 = **91 页**。
+- **引擎行为**：`HIDDEN` 集合来自 `data-hidden`；`buildToc()` 跳过隐藏页（TOC 序号连续无跳号）；`go()` 对隐藏页顺延到下一可见页；`visTotal = total - hiddenCount`；`?embed=1` 走 NO_SKIP 按原始页码寻址（看片台预览框需要）。
+
+### 【核心坑】验收脚本取 TOC 序号/标题必须分 span，禁止解析 textContent
+
+`.toc-link` 的 DOM 是 `<span class="n">15</span><span>1989 — The First Full-Body 3D Scan</span>`。
+用 `el.textContent.match(/^(\d+)/)` 会把两段拼成 `151989` —— 既误判「TOC 序号有跳号（暴露隐藏页位置）」，
+又误剥标题前缀（`hidden=0` 的 L1 session-2 就是这么被误报的）。
+**正确写法**：序号取 `.n` span（`parseInt(nEl.textContent, 10)`），标题取**最后一个 `span`**；
+泄漏检测用标题 span 组成的 `Set` 精确比对。`verify_hidden.mjs` 已按此修复。
+
+### 引擎版本对齐是硬约束
+
+`verify_hidden.mjs` 调用 `window.__deck.lastVisPage()`、`d.hiddenRule.visIndex()`。
+**旧引擎快照缺这些方法 → 验收脚本直接崩**（`TypeError: … is not a function`）。
+跑全量验收前先确认九个 deck 都由 canonical 引擎重建过：
+
+```bash
+# 版本探针：产物里 grep 关键方法名，逐个 deck 核对
+for d in <lecture>/03-slides/session*/index.html; do
+  printf '%s: ' "$d"
+  grep -c 'lastVisPage\|hiddenRule\|visIndex' "$d"
+done
+```
+
+重建九个 deck（L1×3 + L2×6）的实测耗时约数分钟；L1 重建会输出
+`[journal] replayed N/N edit batches`，**证明 slide-edits 未丢**。
+
+### 三套验收脚本的分工（跑全量时都要过）
+
+| 脚本 | 覆盖 | 关键判据 |
+|---|---|---|
+| `check_deck.mjs <deck_dir>` | 逐页 overflow/破图/坏视频/空讲稿 | **用 `visTotal` 而非 `total` 比 TOC 条数**（否则每个隐藏页都误报「toc links 少一条」）；隐藏页另开 `?embed=1` 趟跑 |
+| `verify_hidden.mjs` | 隐藏页 12 项行为语义 × light/dark | TOC 序号连续、隐藏标题不泄漏、`visTotal`、presenter 页码/进度段/End 键 |
+| `final_accept.mjs <http_base>` | 整体功能汇总 | `total/nav/toc/notes/arrow/presNav` + `jsErr=0` + `ext=0`（离线合规） |
+
+### 看片台分隔条标题（`.bsep`）
+
+曾出现三重冗余：`Session 1Body Models: A History63 slides · 隐藏 10`。
+源头在 `_shared/viewer/viewer.template.html`，改完必须 `python3 build_viewer.py --all --repo-root "<课程根>"` 重建，
+再断言六条分隔条各自含 `Session N` + 主题名、且无叠字。E2E 采集 `sepTexts` / `headerText` 做语义断言。
