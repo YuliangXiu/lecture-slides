@@ -51,7 +51,7 @@ dataset 应用 → 播放钳制在片段内（timeupdate 后 currentTime ∈ [2,
 
 ## 双视图剪辑同步 + 自动播放修复（engine.js，2026-09-06）
 
-两处 bug 修复只落在框架源 `newdeck-framework/engine.js`，部署态由 `deck_builder.py` 重建：
+两处 bug 修复只落在框架源 `_shared/deck-engine/engine.js`，部署态由 `_shared/build/deck_builder.py` 重建：
 
 1. **剪辑跨视图失效**：观众窗口（目录 URL，pathname=`…/session-N/`）与演讲者预览 iframe（`index.html?pv=1`，pathname=`…/session-N/index.html`）原 `SEG_STORE='dhseg::'+location.pathname` 生成两个不同键。修复三件套：
    - `normPath()` 归一化（两视图同键）；
@@ -59,6 +59,7 @@ dataset 应用 → 播放钳制在片段内（timeupdate 后 currentTime ∈ [2,
    - `storage` 事件监听——**非写入方**即时 `setupVideos()` + seek + `playVideos()`，双向剪辑即时同步。
 2. **观众视角不自动播放**：`play()` 被拒（数据未就绪/后台）时静默失败无重试；演讲者视图靠 presenter.html 800ms `goto` 重发自愈，观众窗口无此通道。修复：`tryPlay()` + `wantPlay` 标记 + `canplay`/`playing` 事件重试。
 
-验收注意（回归脚本 `_verify_dualview.mjs`）：
+验收注意（回归脚本 `_verify_dualview.mjs`，2026-09-09 重构后已随旧框架归档至
+`<备份目录>/bak/refactor-20260909-deadcode/newdeck-framework/`，需要时从归档取回运行）：
 - 测试 HTTP 服务器**必须支持 Range 请求**，否则视频 seek 挂起（t 停在 0）造成假阴性。
 - 验证 presenter 必须走 presenter-inject 的 S 键路径打开（直接 `window.open` 会导致 `pwin=null`、hello 握手被忽略、iframe src 永空）。

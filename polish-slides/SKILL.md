@@ -18,7 +18,7 @@ agent_created: true
 
 - **`prompt-optimizer` skill（提示词增强，强制前置步骤，见 Workflow 第 2 步）**：所有意见在应用前必须先经它增强。
 - **`video-download` skill（含视频链接意见的前置，见 Workflow 第 3 步）**：处理含 YouTube/Bilibili 链接的 `ppt` / `insert-*` 意见时，先按它把视频下载到本地再落 deck。
-- 复用 `lecture-deck-pipeline` 的构建与验收脚本（`deck_builder.py` / `check_deck.mjs` / `final_accept.mjs`）。
+- 复用 `lecture-deck-pipeline` 的构建与验收脚本（`_shared/build/deck_builder.py` / `_shared/deck-engine/check_deck.mjs` / `_shared/deck-engine/final_accept.mjs`）。
 - 目录约定、notes 单一数据源、file:// 硬约束、云同步目录覆写规则等**全部沿用** lecture-deck-pipeline 的 SKILL.md，不在此重复。
 
 ## 意见的存储契约（前端 ↔ 本 skill 的接口）
@@ -128,7 +128,7 @@ polish-slides <课程根>/02-script/data/feedback-history.json
 
 ### 3. 路由 + 应用（硬约束）
 
-- **live 内容模块路径**：`session{N}_content.py` 不在课程工作目录，实际在部署工程 `<repo>/newdeck-framework/`（改前先 `ls -la` 按修改时间确认最新版，勿改 bak/ 里的旧副本）。改前备份到 `newdeck-framework/bak/*.pre-polish-*.bak`。
+- **live 内容模块路径**：`{lecture_root}/tools/content/session{N}_content.py`（重构后已随各讲入库）。改前先 `ls -la` 确认最新版，勿改 bak/ 里的旧副本；备份到 `{lecture_root}/bak/*.pre-polish-*.bak`。
 - **script 意见**：`session{N}.json` 是逐字稿唯一数据源，改 `en` **必须同步改 `zh`**（双语逐句对应，讲师明确抱怨过不对应）。**不要机械照搬意见原文**——遵循「逐字稿意见的转写与润色原则」（先提炼要点 → 平实简单英文 → 再逐句翻中文）。改完刷新即生效，无需重建 deck。
 - **ppt 意见**：改 `session{N}_content.py` 的 html。遵守「守卫 sentinel + `_func(html)`」幂等模式；媒体容器贴合真实宽高比；多页递进图序列像素级对齐。
 - **insert-before/after**：在 deck 的 `DECK['slides']` 对应位置插新 slide（含 `layout/ttitle/notes/html`），同时在 `session{N}.json` 的对应位置插新 slide 条目（`en` + `zh` 同步编写，逐句对应）。插入后后续 slide 的 `page` 会顺移，注意维护索引一致性。
@@ -143,9 +143,10 @@ polish-slides <课程根>/02-script/data/feedback-history.json
 ### 5. 重建 + 验收（复用 pipeline）
 
 ```bash
-python3 deck_builder.py session{N}_content.py <云端同步根目录>/03-slides/session-{N}/
-node check_deck.mjs <deck_dir>          # 逐页 overflow/离线外链
-node final_accept.mjs <course>/03-slides
+python3 _shared/build/deck_builder.py \
+  <lecture>/tools/content/session{N}_content.py <lecture>/03-slides/session-{N}
+node _shared/deck-engine/check_deck.mjs <deck_dir>     # 逐页 overflow/离线外链
+node _shared/deck-engine/final_accept.mjs <course>/03-slides
 ```
 
 > 重建只更新 03-slides 权威源（永不改动源媒体）。若讲师要同步**部署镜像**（04-deploy 裁剪版 + 学生网页版），按 `lecture-slides` skill 模块 G 的「重建镜像 + 重放裁剪/瘦身 + 学生版发布」流程执行（rsync 重建 04-deploy → `apply_trims.py --apply` → `slim_images.py` / `slim_videos.py` → `build_publish.py`），**不要手改部署态 index.html**。完整约定见 `lecture-slides` 的 `references/deploy-slimming.md`。
@@ -157,11 +158,11 @@ node final_accept.mjs <course>/03-slides
 
 - **sid / page 会漂移（2026-09-04 实锤）**：`1:S1.23` 实际目标在 session3 的 The Roadmap（S1.21–S1.27 是历史删除/重编号的孤儿 id），feedback 里的 `page` 也可能过时。定位真身时**以文本关键词 + 标题匹配为准**（用 text 里的独特短语在 session{N}.json 和 deck ttitle 里搜），`page`/`sid` 只作起点提示。截图自验同理：先读 deck 页脚 "n / N" 指示器确认页码，别信 feedback 的 page 直算 `go(page-1)`。
 - **并行 polish run 冲突**：另一运行可能同时在改同一批文件（session json / content modules）。动手前用文件 mtime 检查近 30s 是否有写入活动，或直接向用户确认错峰策略；`Ongoing` 标记只防重复认领，不防同文件交叉覆写。**另一 run 还可能「做了不认领」**（2026-09-04 实锤：5 条 unsolved 已被并行 run 全部实现但状态未动）。认领后先考古：diff `bak/` 最新备份、grep 部署态 HTML、对照 session{N}.json，判断每条是否已实现——已实现的只做核验（check_deck + final_accept + 截图）后关账，缺的才补，**绝不盲目重做**。谁打 solved 谁负责验证。
-- **重建会清掉编辑模式的媒体编辑（2026-09-03 事故）**：编辑模式（换/删/裁）的 ops 只对部署态 index.html 做手术。现已有持久化链路：play.command 落 ops 到 `02-script/data/slide-edits.json`，deck_builder.py 重建后自动重放——**重建必须走 deck_builder.py**（自带重放），不要手工改部署态 index.html。跑 polish 前若怀疑有未落日志的编辑，先 diff 部署态 vs 内容模块重建产物（`03-slides/session-N/index.html` 逐 section 对比）确认无差异再动手。
+- **重建会清掉编辑模式的媒体编辑（2026-09-03 事故）**：编辑模式（换/删/裁）的 ops 只对部署态 index.html 做手术。现已有持久化链路：play.command 落 ops 到 `02-script/data/slide-edits.json`，`_shared/build/deck_builder.py` 重建后自动重放——**重建必须走 deck_builder.py**（自带重放），不要手工改部署态 index.html。跑 polish 前若怀疑有未落日志的编辑，先 diff 部署态 vs 内容模块重建产物（`03-slides/session-N/index.html` 逐 section 对比）确认无差异再动手。
 - **卡片编辑器 op 语义（重建重放时与 polish 的交互）**：编辑器现支持五类 op——`cardmove{left,top}` / `carddel` / `cardresize{w,h,fs}` / `crop{ox,oy,zoom}` / `replace{src}`，全部**绝对值、幂等**，重建重放任意顺序结果一致；其中 `cardresize` 会给卡内媒体注入 `fill`（w/h 100% + `object-fit:cover`）+ `flex:0 0 auto` + `fs` 落 figcaption。含义：**已保存的编辑器修改会与 polish 改动叠加，不会丢**——但若 polish 改了某张已被编辑器动过的卡片的 html 结构（如重排 figure 内媒体、改 figcaption），重放的 `cardmove`/`cardresize` 会按 op 里的 `index`（**同标签局部序号**，非 img/video/iframe 混合序号）定位，结构变了可能错位。对「编辑器已动过 + polish 也要动」的同一页，改完先 diff 重建产物确认重放仍命中正确元素。完整设计见 `lecture-slides` skill 的 `references/card-editor.md`。
 - **清空只清临时层（2026-09-03 重设计后）**：`feedback.json` 只是临时存储，真正的状态在讲师浏览器 localStorage（`polish-feedback-v2:*` 键）+ history 文件。直接清文件等于白清（前端会把 localStorage 的旧意见写回）。正确姿势：① 讲师页面点「清空」按钮（POST /api/clear-feedback，只清 feedback.json）或开 `02-script/index.html?fbwipe=1` 应急清 localStorage；② 意见是否处理完看 history 的 `status`，与 feedback.json 无关。旧版 `_reconcile_feedback`（save/clear 联动 history）已删除，别再找它。
 - **`.media-grid figure img` 全局绝对定位坑**：style.css 有 `.media-grid figure img, .media-grid figure video { position:absolute; inset:0; width:100%; height:100% }`——媒体 figure 内**任何** inline icon `<img>`（如四宫格卡片图标）都会被强制绝对定位堆到容器左上角（讲师抱怨过「icon 全堆左上角」即此因）。修复：icon 内联加 `position:static` 压制。
-- **封面 zh-note 是构建期注入的**：`<span class="zh-note">` 不在内容模块里，是 deck_builder 运行 `ann.py` 按 `/tmp/ann_map.json` 注入的（`{sess: {page: [{pattern, chinese, flags}]}}`）。删某页的中文注释 = 删 ann_map 对应条目，别去 grep 内容模块找 span。ann_map 在 /tmp，重启即失（缺失时全部页都不注入，属静默降级）。
+- **zh-note 现在直接写在内容模块里**（重构后）：形如 `<span class="zh-note" data-ann="zh:\\bTERM\\b">中文</span>`，改/删中文注释直接改 `session{N}_content.py` 再重建即可。旧的构建期注入链路（`ann.py` + `/tmp/ann_map.json`）已随重构删除，不要再找 ann_map。
 - **`final_accept.mjs` 的 http server 必须与验收同一条 shell 命令内启动**（`python3 -m http.server ... & SRV=$!; ...; kill $SRV`），后台 `&` 跨 Bash 调用会被杀，报 ERR_CONNECTION_REFUSED。
 
 - **localStorage 的 origin 隔离**：`http://localhost:8321` 与 `http://localhost:8322`、`file://` 是不同存储桶。**自动落盘已绕开此坑**——前端把意见写进磁盘 feedback.json，本 skill 直接读文件，不再依赖 Playwright 读 localStorage。旧 `scripts/export_feedback.mjs` 仅在需要「从某个已开着的页面导出」时作备选，且要求 origin 完全一致。

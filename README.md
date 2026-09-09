@@ -1,20 +1,27 @@
 # lecture-slides
 
-Three independent agent skills for building, polishing and deploying **HTML lecture slides**:
+Four independent agent skills for building, polishing and deploying **HTML lecture slides**:
 
 | Skill | Directory | What it does |
 |---|---|---|
+| `lecture-deck-pipeline` | [`lecture-deck-pipeline/`](./lecture-deck-pipeline/) | Builds and iterates a course deck project end to end: fixed-stage engine + Python content modules, a single-source bilingual speaker-script JSON, presenter view, and the `play.command` launcher. Owns the directory contract, build/acceptance commands and the engine's authoring rules. |
 | `lecture-slides` | [`lecture-slides/`](./lecture-slides/) | Builds decks in one visual system (04-magazine editorial style) with a Keynote-style presenter view and fully offline, self-contained output. |
 | `polish-slides` | [`polish-slides/`](./polish-slides/) | Runs the feedback loop on an existing deck project: reads a queue of unsolved review comments, routes them to the deck and its bilingual speaker script, rebuilds, verifies, and closes the resolved items. |
 | `deploy-slides` | [`deploy-slides/`](./deploy-slides/) | End-to-end deploy pipeline for a course deck project: trims/slims media into a deploy mirror, idempotently syncs the media folder to Tencent COS, then generates the student web build and commits it to the course homepage repo. |
 
-Each directory is a complete skill in the standard agent-skills format (`SKILL.md` + `assets/` + `references/` + `scripts/`). They are independent: `polish-slides` does not depend on this repo's `lecture-slides` skill, and `deploy-slides` only *references* `lecture-slides` module G for the internals of its media executors. All three expect an HTML-slide workflow; `polish-slides` is written for a specific course scaffold (`session{N}_content.py` content modules, `session{N}.json` speaker scripts, `02-script/` front end) but its routing rules generalize to any deck + bilingual-script project. `deploy-slides` is a course-agnostic template: every instance value (course root, homepage repo, COS bucket/region/prefix, publish domain) appears as a `<...>` placeholder that you substitute per course.
+Each directory is a complete skill in the standard agent-skills format (`SKILL.md` + `assets/` + `references/` + `scripts/`). They are independent: `polish-slides` reuses `lecture-deck-pipeline`'s build and acceptance scripts but does not depend on this repo's `lecture-slides` skill, and `deploy-slides` only *references* `lecture-slides` module G for the internals of its media executors. All four expect an HTML-slide workflow; `lecture-deck-pipeline` and `polish-slides` are written for a specific course scaffold (`_shared/` engine + build layer, `tools/content/session{N}_content.py` content modules, `session{N}.json` speaker scripts, `02-script/` front end) but their directory and routing rules generalize to any deck + bilingual-script project. `deploy-slides` is a course-agnostic template: every instance value (course root, homepage repo, COS bucket/region/prefix, publish domain) appears as a `<...>` placeholder that you substitute per course.
 
 ## Repository layout
 
 ```
 README.md                        # this file
-lecture-slides/                  # skill 1: building slides
+lecture-deck-pipeline/           # skill 1: building a deck project
+  SKILL.md                       # entry: directory contract, build/accept loop, pitfalls
+  assets/
+    play.command                 # macOS launcher (HTTP server + browser windows)
+  references/
+    AUTHORING.md                 # engine authoring rules: layout doctrine, media, notes
+lecture-slides/                  # skill 2: building slides
   SKILL.md                       # entry: triggers, module workflow, pitfalls
   assets/
     magazine-style.css           # 04-magazine skin (drop-in)
@@ -35,11 +42,11 @@ lecture-slides/                  # skill 1: building slides
     audit_aspect.mjs             # media aspect-ratio audit
     audit_layout.mjs             # layout-balance audit
     test_segeditor.mjs           # segment editor E2E
-polish-slides/                   # skill 2: applying review feedback
+polish-slides/                   # skill 3: applying review feedback
   SKILL.md                       # entry: queue, routing, rewrite rules, status writes
   scripts/
     export_feedback.mjs          # optional localStorage export helper
-deploy-slides/                   # skill 3: end-to-end deploy pipeline
+deploy-slides/                   # skill 4: end-to-end deploy pipeline
   SKILL.md                       # entry: I/O contract, seven stages, failure/retry
   README.md                      # directory map
   references/
@@ -50,7 +57,19 @@ deploy-slides/                   # skill 3: end-to-end deploy pipeline
   .gitignore
 ```
 
-## Skill 1 — `lecture-slides` (building)
+## Skill 1 — `lecture-deck-pipeline` (building a deck project)
+
+The orchestration skill for a whole lecture: it owns the directory contract (authoritative deck source vs. deploy mirror), the `_shared/` engine + builder layer shared across lectures, and the build → verify loop. Content lives in Python modules (`tools/content/session{N}_content.py`); the speaker script is a single JSON source of truth; the deck is a fixed 1920×1080 stage (not reveal.js) rendered offline. `assets/play.command` starts a local HTTP server and opens the front end plus the deck windows (multi-screen aware). `references/AUTHORING.md` is the engine's authoring guide — layout doctrine, media rules, notes display, keyboard control, thumbnail-gallery recipes.
+
+### Usage
+
+```bash
+cp -R lecture-deck-pipeline ~/.workbuddy/skills/lecture-deck-pipeline   # e.g. for WorkBuddy
+```
+
+The skill triggers on requests like "make the course slides", "build the deck", "new lecture", "notes not showing", "play.command", "deck_builder".
+
+## Skill 2 — `lecture-slides` (building)
 
 One visual standard, five capabilities:
 
@@ -71,7 +90,7 @@ cp -R lecture-slides ~/.workbuddy/skills/lecture-slides   # e.g. for WorkBuddy
 
 The skill triggers on requests like "make lecture slides", "unify card styles", "presenter view", "dual progress bar", "offline / self-contained deck", "media boxes are cropped / layout has dead space", "video segment". Manual use is fine too — the CSS, JS, and reference docs are self-explanatory.
 
-## Skill 2 — `polish-slides` (polishing)
+## Skill 3 — `polish-slides` (polishing)
 
 Closes the loop between reviewer feedback and a deck project:
 
@@ -90,7 +109,7 @@ polish-slides <课程根>/02-script/data/feedback-history.json
 
 Run it from the course project directory, passing the path of the feedback history file (the lecturer-side export button copies exactly this kind of path — `<课程根>` is a placeholder for the course root directory). The skill reads all unsolved records as its task queue.
 
-## Skill 3 — `deploy-slides` (deploying)
+## Skill 4 — `deploy-slides` (deploying)
 
 Runs the end-to-end publish pipeline for a course deck project, as a seven-stage, idempotent, replayable workflow:
 
