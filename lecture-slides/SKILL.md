@@ -73,7 +73,9 @@ NODE_PATH=<含 playwright 的 node_modules 所在目录> \
 
 **B3 设计要点**（详见 `references/presenter-mode.md`）：
 - 双窗口 postMessage（TAG `__hwyqPres`），命令 = hello/nav/goto/fs；state 携 page/total/notes，meta 携 durs[]（每页估时 `max(12, 字数/语速×60)` 秒）
-- 布局：左列当前页大预览（flex:1）+ 双进度条面板；右列下一页小预览（height:40%）+ 演讲文稿
+- 布局：左列当前页大预览（flex:1）+ 双进度条面板；右列演讲文稿占满整列（备注滚动默认关，点「滚动」开关手动开启）
+- **备注区自适应字号**：每页二分搜索字号使内容高度落在容器可用高度的 80%（clamp 20–36px，行高 1.6，间距全用 em）；触顶页把富余迭代分摊到 `--cue-pad`/`--cue-gap`，空档落在句间与起承转合之间。必须测内层包裹元素的 `offsetHeight`，`scrollHeight` 会被钳制导致误判。算法全文与 5 条 Pitfalls 见 `references/presenter-mode.md`
+- 备注区可选承载 **cue-cards**（演讲提示卡）替代逐字稿：deck 侧 fetch `02-script/data/cuecards.json` 按 `sections[].slides[].id` 平铺成 `__cueFlat`，`state()` 带 `cue` 转发；presenter 侧 `apply()` 第 6 参优先渲染 cue，默认英文、L 键切换、localStorage 记忆
 - 双进度条：bar1 课堂时间 fill=elapsed/45min + 讲稿累计时刻刻度层；bar2 内容进度画布=讲稿总时长，分段层当前页高亮，fill=edge/totalSec；pace 徽标 = edge − elapsed（快/慢/正常，阈值 20s）
 - 自愈：800ms 幂等重发 goto 给预览 iframe（引擎同页早退）；meta 5s 重发按内容 key 去重
 - 单屏退化：不开演讲者窗口即正常放映；注入 JS 在 `window.top !== window.self` 时休眠
@@ -208,7 +210,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
   - `tools/slim_images.py` — gif→animated WebP、png→WebP，改写 04-deploy 的 index.html 引用
   - `tools/build_publish.py` — 从 04-deploy 生成学生网页播放版（COS 绝对 URL + presenter/✂ 禁用），发布到主页 repo
 - **统一质量档位**：`libx264 CRF 24 + preset medium + yuv420p + -c:a copy + -movflags +faststart`，保证未裁剪原片与已裁剪片段在同一视觉质量带。
-- **放映链路**：本地双击课程根 `play.command`（服务根 = 课程根），观众 deck URL 切到 `/04-deploy/session-N/`。**必须由课程根 serve**，别把 04-deploy 单独当 server 根（否则 notes 404）。
+- **放映链路**：本地双击课程根 `play.command`（服务根 = 课程根），自动打开的观众 deck 用 `/03-slides/session-N/`（2026-09-09 起，含 `?pvx/pvy/pvw/pvh` 多屏定位），**不是** `/04-deploy/`；04-deploy 仅作发布用裁剪镜像。**必须由课程根 serve**，别把 03-slides / 04-deploy 单独当 server 根（否则 notes 404）。
 - **重建镜像后重放**：03-slides 变动 → rsync 重建 04-deploy → 重跑 apply_trims + slim_images + slim_videos → build_publish。全程幂等，重复运行安全。
 
 ### 模块 H — 02-script 工作台配套

@@ -1,7 +1,7 @@
 # 演讲者模式（Keynote 式双屏 + 双进度条）设计参考
 
 为静态 HTML 课件实现 Keynote/PowerPoint 式演讲者视图：观众屏全屏放映，演讲者屏显示
-当前页大预览 + 下一页预览 + 演讲文稿 + 双进度条，两屏实时同步。**全程无构建工具、
+当前页大预览 + 演讲文稿 + 双进度条，两屏实时同步。**全程无构建工具、
 file:// 双击可用**（postMessage 跨窗口通信不触发 file:// 同源限制，同源 iframe 的
 contentWindow 直访才会）。
 
@@ -12,7 +12,7 @@ contentWindow 直访才会）。
         │                                              │
         │ window.__deck = { go, page(), total, notes(i) }   ← 引擎导出，唯一权威
         │ window.__onPage = state 回调（引擎 go() 末尾触发）
-        └── 演讲者窗口内的两块预览 = index.html 的 iframe
+        └── 演讲者窗口内的当前页预览 = index.html 的 iframe
             复用 SYNC_JS 的 goto 协议（__hwyqSync TAG）驱动
 ```
 
@@ -33,7 +33,7 @@ contentWindow 直访才会）。
 | deck → pres | meta | durs[]/courseSec | hello 应答 + 900ms 兜底 + 每 5s 幂等重发 |
 | iframe → pres | (SYNCTAG nav) | dir ±1 | 预览 iframe 内方向键，转发回 deck 仲裁 |
 
-自愈设计：演讲者窗口每 800ms 向两块预览 iframe 幂等重发 goto（引擎同页早退，无视觉扰动），
+自愈设计：演讲者窗口每 800ms 向当前页预览 iframe 幂等重发 goto（引擎同页早退，无视觉扰动），
 克服 iframe 加载窗口期的消息丢失；meta 每 5s 重发，presenter 按 `durs.join(',')+':'+courseSec`
 内容 key 去重，重复包无副作用。
 
@@ -59,8 +59,11 @@ contentWindow 直访才会）。
 ```
 main grid: 1.5fr | 1fr
 左列：当前页大预览(flex:1) + .bars 双进度条面板
-右列：下一页小预览(flex:none; height:40%) + aside.notes 演讲文稿(flex:1)
+右列：aside.notes 演讲文稿占满整列（flex:1，上下边缘紧贴容器，顶天立地）
 ```
+
+备注滚动默认关闭（`.nbody` overflow:hidden），演讲者点「滚动」开关后才切为 overflow:auto
+（`.nbody.scroll`），用于回看长讲稿；关闭时自动回顶并清滚动锚点。
 
 预览 iframe 首帧带 `#/N` hash 直达当前页避免闪第 1 页；之后靠 goto 消息驱动。
 
@@ -68,6 +71,177 @@ main grid: 1.5fr | 1fr
 
 不开演讲者窗口 = 正常全屏放映，无任何开销（注入 JS 只在 window.top === window.self 时激活，
 嵌入 compare.html 等父页场景自动休眠）。
+
+## 备注区自适应字号（内容铺满容器）
+
+备注区内容量逐页差 3 倍（一页 167 字符、另一页 844 字符），固定字号必然「要么挤要么空」。
+做法是每页二分搜索一个字号，让内容高度落在容器可用高度的目标填充率上。
+
+```js
+var FS_MIN = 20, FS_MAX = 36, FS_TARGET = 0.80;
+
+function fitCues() {
+  var wrap = nb.firstElementChild;          // 内层包裹元素，见下方 Pitfalls
+  var boxH = nb.clientHeight - 上下 padding;
+  nb.style.setProperty('--cue-pad', '0em');
+  nb.style.setProperty('--cue-gap', '0em');
+  var best;
+  nb.style.fontSize = FS_MAX + 'px';
+  if (wrap.offsetHeight <= boxH * FS_TARGET) {
+    best = FS_MAX;                          // 装得下 = 触顶页，跳过二分
+  } else {
+    var lo = FS_MIN, hi = FS_MAX; best = FS_MIN;
+    for (var it = 0; it < 20; it++) {
+      var mid = (lo + hi) / 2;
+      nb.style.fontSize = mid + 'px';
+      if (wrap.offsetHeight <= boxH * FS_TARGET) { best = mid; lo = mid; }
+      else { hi = mid; }
+      if (hi - lo < 0.1) break;
+    }
+    nb.style.fontSize = best.toFixed(1) + 'px';
+  }
+  /* 富余分摊：字号已定，把剩余空间变成行距/间距，而不是留底部一片空白 */
+  var lis = wrap.querySelectorAll('.cue-lines li');
+  var blocks = wrap.querySelectorAll('.cue-q, .cue-in, .cue-out, .cue-facts');
+  if (lis.length || blocks.length) {
+    var padPx = 0, gapPx = 0;
+    for (var r = 0; r < 8; r++) {
+      var rest = boxH * FS_TARGET - wrap.offsetHeight;
+      if (rest < 6) break;
+      var dPad = lis.length ? rest * 0.6 / (2 * lis.length) : 0;
+      var dGap = blocks.length ? rest * 0.4 / blocks.length : 0;
+      var nPad = Math.min(padPx + dPad, best * 0.75);
+      var nGap = Math.min(gapPx + dGap, best * 0.85);
+      if (nPad <= padPx + 0.01 && nGap <= gapPx + 0.01) break;
+      padPx = nPad; gapPx = nGap;
+      nb.style.setProperty('--cue-pad', (padPx / best).toFixed(3) + 'em');
+      nb.style.setProperty('--cue-gap', (gapPx / best).toFixed(3) + 'em');
+    }
+    if (wrap.offsetHeight > boxH * 0.98) {   // 兜底：收回，保证不滚动
+      var k = (boxH * 0.98) / wrap.offsetHeight;
+      nb.style.setProperty('--cue-pad', (padPx * k / best).toFixed(3) + 'em');
+      nb.style.setProperty('--cue-gap', (gapPx * k / best).toFixed(3) + 'em');
+    }
+  }
+  nb.classList.toggle('cues-over', wrap.offsetHeight > boxH);
+}
+```
+
+配套 CSS 的关键：所有间距用 `em`（随字号缩放），并用 CSS 变量承接分摊量。
+
+```css
+.nbody.cues { white-space:normal; overflow:hidden; line-height:1.6; }
+.cues .cue-lines li { padding:calc(.3em + var(--cue-pad,0em)) 0 calc(.3em + var(--cue-pad,0em)) 1.15em; }
+.cues .cue-q { margin:0 0 calc(.8em + var(--cue-gap,0em)); }
+/* IN 在 cue 列表之上，OUT 在列表之下（按讲述顺序，不可合并成单个 .cue-io） */
+.cues .cue-in { margin:0 0 calc(.85em + var(--cue-gap,0em)); }
+.cues .cue-out { margin:calc(1em + var(--cue-gap,0em)) 0 0; }
+```
+
+## cue-cards 结构顺序（讲述顺序）
+
+卡片 DOM 顺序固定为 `q → IN → cue-lines → OUT → facts`：IN 回答「怎么进场」、
+cues 是正文骨架、OUT 回答「怎么收尾」、facts 是可引用的数字/名词。`cueCardHTML()`
+必须按此顺序拼接；`fitCues()` 的测量选择器要包含 `.cue-in` 与 `.cue-out`。
+
+## hover 展开逐字稿片段（cue 行 → 讲稿对齐）
+
+演讲时对着压缩过的 cue 行讲，常需要「这句话在逐字稿里怎么说的」。做法：hover 某行时，
+在该行与下一行之间向下折叠展开对应的逐字稿片段。
+
+折叠动画用 `grid-template-rows: 0fr → 1fr`，不测高、收起时占位为 0，因此**不干扰
+`fitCues()` 的未展开态测高**：
+
+```css
+.cues .cue-note { display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows .28s cubic-bezier(.4,0,.2,1); }
+.cues .cue-note > div { overflow:hidden; }           /* 内层必须 overflow:hidden */
+.cues .cue-note .seg { font-size:.82em; padding-left:.72em;
+  border-left:2px solid #2c3140; opacity:0; transition:opacity .2s ease .06s; }
+.cues .cue-lines li:hover .cue-note { grid-template-rows:1fr; }
+.cues .cue-lines li:hover .cue-note .seg { opacity:1; }
+```
+
+### 对齐算法 alignSegs()
+
+逐字稿是 EN/ZH 交替的整段串，cue 行是压缩改写，两者没有显式对应关系，必须算。
+
+1. 按语言分开切句（复用 presenter 已有的 `splitNotes` 分句器）。
+2. 词元：EN 取 `[a-z0-9]+` 并过滤 STOP 词；ZH 二元切分（bigram）。
+3. IDF 加权 `log(1 + N/(1+df))`。
+4. 单调贪心 + 窗口 `MAXSPAN=5` 句 + 距离惩罚 `DISTPEN=0.012` + 跨度惩罚 `SPANPEN=0.08`
+   + 低分不推进游标 `MINRAW=0.15`（把机会留给下一行）。
+5. **中文拼接不加空格**：`var JOIN = (lang === 'zh') ? '' : ' ';`，`sents.slice(...).join(JOIN)`。
+   否则片段里出现「。 地图」这种多余空格。
+
+实测 936 行命中 930 行（99.4%），平均片段 70 字符。span 惩罚 0 → 0.08 使平均片段
+103 → 76 字符：宁可短片段也不摊大饼。
+
+### splitNotes 的中文断句（易漏，改一处必须同步三处）
+
+**`splitNotes` 有三份副本**：`_shared/deck-engine/presenter.html`（权威源）、
+`_shared/deck-engine/engine.js`（约 L770，备注分句渲染）、以及各课程
+`02-script/index.html`（cue 行对齐用）。**改任何一处都要同步其余两处。**
+
+原实现只认西文句界 `next === ' '`，中文句号后直接接汉字 ⇒ **整段中文被当成一句**
+（实测 `sentsOf(zh,'zh').length === 1`），后果是中文模式只有 cue 首行命中片段、
+其余全空。正确写法：
+
+```js
+while (j < s.length && '"\'\u201d\u2019)]\u300d\u300f'.indexOf(s[j]) >= 0) { buf += s[j]; j++; }
+/* 中文强标点：中文不用空格分隔，句号后直接接汉字，故无条件断句 */
+if (c === '\u3002' || c === '\uff01' || c === '\uff1f') {
+  out.push(buf.trim()); buf = ''; i = j - 1; continue;
+}
+var next = s[j];
+/* next 为汉字（中文文本里夹的英文句点，如 "Michael Black。"）同样视为句界 */
+if (j >= s.length || next === ' ' || /[\u4e00-\u9fa5]/.test(next)) { ... }
+```
+
+自检：修复后对任一页应满足 `sentsOf(zh).length === sentsOf(en).length`（中英逐字稿
+一一对应）。全量验收用提取**文件真实源码**跑（不要手抄复现），统计中文命中率应
+与英文持平（实测 464/468 vs 465/468）。
+
+### 三个必须处理的鲁棒性问题
+
+- **周期性 state 会打断 hover 动画**：`postMessage` 反序列化后 `cue === c` 永假，
+  每次 hello/自愈/步进都会整体重建 DOM。必须用指纹
+  `cueKey === page + '|' + cueLang && cueNotes === notes` 判断是否真的需要重建。
+- **展开撑高可能溢出**：hover 时给 `.nbody` 临时加 `.cues-peek`（`overflow-y:auto`），
+  `mouseover` 加、`mouseout` 延迟 320ms 移除（给移入片段留时间），
+  `transitionend` 时把该行滚入可见区。
+- **低分行不要渲染空容器**：`seg` 为空时根本不生成 `.cue-note`，避免空动画与占位。
+
+实测（27 页、备注区 1050×781）：零溢出，填充率 79.5%–85.1%，中位 ~80%；
+触顶页从 54%/60% 提升到 79.5%。
+
+### Pitfalls
+
+- **不能用 `nb.scrollHeight` 测量**：内容小于容器时它被钳制为 `clientHeight`，二分会被
+  误判为「永远溢出」、字号永远卡在下限。必须给内容包一层 `<div class="cue-wrap">`，
+  测它的 `offsetHeight`。
+- **触顶判定不要用 `best >= FS_MAX - 0.05`**：二分收敛精度是 0.1，实际停在 35.9，
+  判定永不成立、富余分摊完全不触发。先单独测一次 `FS_MAX` 是否装得下。
+- **单次按比例分摊不够**：em 换算与行盒边界有误差，一次算完往往差几个百分点。
+  用迭代（每次追加剩余量的 60%/40%，最多 8 轮）逼近，再加等比兜底。
+- **模拟大尺寸容器时父级也要设尺寸**：`.nbody` 是 flex 子项，只给它 `height` 会被
+  父容器压扁（实测 clientHeight 仅 82px）；要给父容器同样设 `width/height/flex:none`。
+- **截图只截视口**：`agent-browser screenshot "#nbody"` 超出的部分全黑（非渲染缺陷）。
+  要看清整块需隐藏兄弟节点 + `transform: scale()` 压进视口。
+- **窗口尺寸必须显式设成演示尺寸**：agent-browser 默认 800×477，会让 `.hint` 提示条
+  盖住 cue 区（`elementFromPoint` 命中 `.hint` 而非 `li`），并触发 `cues-over`
+  （字号压到下限 15px）。先 `agent-browser set viewport 1920 1080`，此时应为
+  `fs: 20px`、`over: false`、`scrollHeight === clientHeight`。
+- **`agent-browser hover <sel>` 不可靠**：返回 Done 但 `:hover` 样式未生效。改用
+  `agent-browser mouse move <x> <y>`，坐标先用 `getBoundingClientRect()` 算，
+  并用 `elementFromPoint` 预校验命中元素。
+- **`set viewport` 会重置 eval 目标 tab**，设置后必须重新 `agent-browser tab tN`。
+  弹窗/新 tab 同理（`tab 1` 不接受位置整数，必须 `tab t1`）。
+- **验证动画是过渡而非瞬变**：用 `requestAnimationFrame` 采样 `getBoundingClientRect().height`
+  存进数组，hover 后读回。展开应在 ~250ms 内 0 → 目标高度，出现中间帧才算真动画。
+- **测真实链路要用 deck 的放映按钮**：按钮是 `[data-act=pres]`（class `dbtn`，无 id），
+  用 `document.querySelector('[data-act=pres]').click()`。presenter 只接受
+  `e.source === opener` 的消息，`window.open(..., '<其他窗口名>', ...)` 不会建立握手。
 
 ## Pitfalls
 

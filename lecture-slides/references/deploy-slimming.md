@@ -111,10 +111,12 @@
 
 本地放映 = 双击课程根 `play.command`（内置 http 服务，**服务根 = 课程根**）。
 
-- 观众 deck URL 从 `/03-slides/session-N/` 改为 `/04-deploy/session-N/`——观众看到裁剪后的轻量媒体。
-- deck 讲稿 fetch `../../02-script/data/sessionN.json`，从 `/04-deploy/session-N/` 出发向上两级仍落到课程根。所以**必须由课程根 serve**，不要把 04-deploy 单独当 server 根（否则 notes 404）。
-- 02-script 逐字稿对照页的内嵌 iframe 预览仍指向 03-slides 权威源（它是编辑工作台，不是放映物）。
-- 演讲者视图已移除（2026-09-07）：04-deploy 的 presenter.html 及 deck 内 presenter 入口均删除。
+- **自动打开的观众 deck 用 `/03-slides/session-N/`，不是 `/04-deploy/`**（2026-09-09 起，用户明确要求）。`DECK_URL` 还注入 `?pvx/pvy/pvw/pvh`（鼠标屏可见区）供 presenter 定位。
+- 04-deploy 仍是**发布用裁剪镜像**（瘦身后供 `build_publish.py` 生成学生版），只是不再作为双击 `play.command` 的默认打开页；终端里仍可手动点 04-deploy 链接预览。
+- deck 讲稿 fetch `../../02-script/data/sessionN.json`，从 `/03-slides/session-N/` 或 `/04-deploy/session-N/` 出发向上两级都落到课程根。所以**必须由课程根 serve**，不要把 04-deploy 单独当 server 根（否则 notes 404）。
+- 02-script 逐字稿对照页的内嵌 iframe 预览指向 03-slides 权威源（它是编辑工作台，不是放映物）。
+- 演讲者视图已移除（2026-09-07）：04-deploy 的 presenter.html 及 deck 内 presenter 入口均删除。**注意**：03-slides 侧保留 presenter.html（放映走 03-slides 后，演讲者视图仍可用）。
+- 各 lecture 的 `play.command` 须保持同一形态，仅 session 数量不同；改一处记得 diff 其余几处。
 
 ## 5. 重建镜像后重新应用（procedure）
 
