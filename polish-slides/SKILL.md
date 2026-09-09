@@ -114,7 +114,7 @@ polish-slides <课程根>/02-script/data/feedback-history.json
 
 ### 2. 意见增强（强制前置步骤，固定工作流，不可跳过）
 
-**规则（2026-09-03 用户定稿）：每次运行本 skill，都必须把收集到的全部修改意见先交给 `prompt-optimizer` skill处理，生成更具体、更明确的增强提示词，再用增强后的提示词去修改 Slides 内容。先增强、后修改——顺序不可颠倒。**
+**规则（2026-09-03 用户定稿）：每次运行本 skill，都必须把收集到的全部修改意见先交给 `prompt-optimizer` skill 处理，生成更具体、更明确的增强提示词，再用增强后的提示词去修改 Slides 内容。先增强、后修改——顺序不可颠倒。**
 
 做法：
 
@@ -148,6 +148,8 @@ node check_deck.mjs <deck_dir>          # 逐页 overflow/离线外链
 node final_accept.mjs <course>/03-slides
 ```
 
+> 重建只更新 03-slides 权威源（永不改动源媒体）。若讲师要同步**部署镜像**（04-deploy 裁剪版 + 学生网页版），按 `lecture-slides` skill 模块 G 的「重建镜像 + 重放裁剪/瘦身 + 学生版发布」流程执行（rsync 重建 04-deploy → `apply_trims.py --apply` → `slim_images.py` / `slim_videos.py` → `build_publish.py`），**不要手改部署态 index.html**。完整约定见 `lecture-slides` 的 `references/deploy-slimming.md`。
+
 ### 6. 回写状态（solved）
 应用并通过验收后，把本次成功修复的每条记录（第 1 步记下的 `key`）改为 `status:"solved"` + `resolved_at`，**原子写回** feedback-history.json（临时文件 + `os.replace`；云同步目录上先写 /tmp 同分区临时文件再 os.replace 会跨设备，直接用同目录临时文件）。失败的条目保持 `unsolved` 并在回复中说明原因。**不要**动 feedback.json——它只是前端当前页的临时存储，清空与否由讲师在页面上操作。
 
@@ -168,6 +170,9 @@ node final_accept.mjs <course>/03-slides
 - **script 改 zh 同步**是硬规则，漏改会被讲师指出。
 - **notes 单一数据源**：deck 的 `notes` 取 `session{N}.json`，改逐字稿即改 notes，无需重建 deck；但改了 `session{N}_content.py` 的 html 必须重建 deck。
 - 云同步目录覆写：沙箱拒 cp 覆写/rm，用 `mv 旧→bak + cp 新`。
+- **`#序号` 定位意见**：`ppt` 意见文本里出现 `#N` 时，指的是 `02-script/index.html` 元素序号标注（elnum）给当前页元素打的序号（DOM 文档序、唯一连续），**不是**卡片编辑器落盘 op 的 `index`（同标签局部序号）。定位真身以「序号 → 对应元素」为准，规则见 `lecture-slides` 的 `references/workbench-tools.md`。
+- **缩略图 since-solved 依赖 resolved_at**：看片台缩略图增量模式 `since-solved` 用 `resolved_at > 该页 manifest ts` 判断是否重拍。本 skill 给条目打 `solved` 写 `resolved_at` 会触发对应页缩略图在下次「刷新缩略图」时增量重拍——属预期联动，不是 bug。
+- **放映服务旧进程**：改了 `play.command` 加新路由后，讲师若仍用接口改造前双击启动的旧进程，新路由回 404 HTML 被前端 `res.json()` 解析报 `Unexpected token '<'`。`02-script/index.html` 已用 `postJSON` 封装做版本提示；讲师报这类错时先让他「重新双击 play.command」重启进程。
 
 ## Resources
 

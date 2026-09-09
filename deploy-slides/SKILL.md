@@ -1,6 +1,6 @@
 ---
 name: deploy-slides
-description: 课件网页部署发布的完整流水线——把 HTML 课件从本地权威源，经过视频剪辑、图片压缩、视频二压瘦身，上传到腾讯云 COS 对象存储，最后生成学生网页播放版发布到课程主页 repo。当用户提到"部署课件""发布到主页""上传 COS""腾讯云对象存储""COS 上传""媒体压缩/瘦身""视频剪辑/裁剪""图片转 webp""学生版发布""deploy""publish""build_publish""coscmd""cos upload""部署发布"时使用。负责编排部署镜像重建、裁剪/压缩执行器、COS 幂等上传、主页 repo 更新与 git 提交，并覆盖工具/密钥缺失、转码失败、幂等重试等异常场景。
+description: 课件网页部署发布的完整流水线——把 HTML 课件从本地权威源，经过视频剪辑、图片压缩、视频二压瘦身，上传到腾讯云 COS 对象存储，最后生成学生网页播放版发布到课程主页 repo。当用户提到"部署课件""发布到主页""上传 COS""腾讯云对象存储""COS 上传""媒体压缩/瘦身""视频剪辑/裁剪""图片转 webp""学生版发布""deploy""publish""build_publish""coscmd""cos upload""部署发布"时使用。负责编排部署前文件清理（旧文件归档）、部署镜像重建、裁剪/压缩执行器、COS 幂等上传、主页 repo 更新与 git 提交，并覆盖工具/密钥缺失、转码失败、幂等重试等异常场景。
 agent_created: true
 ---
 
@@ -10,6 +10,7 @@ agent_created: true
 
 把课程 HTML 课件从本地「权威源」一路部署到「云端可访问的学生版」，是一个**多阶段、可幂等重放**的管线。本 skill 是这条管线的**编排入口**，职责是：
 
+0. **文件清理**——部署前整体清一遍：把与 slides 播放无直接关联的旧文件（`.bak`、一次性脚本、中间产物）归档到各 lecture 的 `_archive/`，纯垃圾（`.DS_Store`/`__pycache__`/`.pyc`）删除（详见 Stage 0a）。
 1. **媒体瘦身**——视频按 `trims.json` 裁剪、未裁剪原片二压、gif/png 转 WebP（复用课程仓自带执行器，见 `lecture-slides` 模块 G）。
 2. **上传 COS**——把瘦身后的媒体递归、幂等上传到腾讯云 COS 指定桶/前缀。
 3. **更新主页**——生成学生网页播放版 HTML，落到主页 repo 的 `teaching/<课程slug>/`，再 git commit + push。

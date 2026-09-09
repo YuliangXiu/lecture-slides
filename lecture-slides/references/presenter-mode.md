@@ -144,6 +144,24 @@ function fitCues() {
 cues 是正文骨架、OUT 回答「怎么收尾」、facts 是可引用的数字/名词。`cueCardHTML()`
 必须按此顺序拼接；`fitCues()` 的测量选择器要包含 `.cue-in` 与 `.cue-out`。
 
+### 同一改造要同步到 02-script（逐字稿工作台）
+
+`02-script/index.html` 的 cue cards 与 presenter 同源，**两处改造必须两边都做**：
+
+- 顺序：`.cue-io` 拆成 `.cue-in`（`margin:0 0 10px`）/ `.cue-out`（`margin:10px 0 0`），
+  IN 用 `--blue`、OUT 用 `--accent`。
+- hover 展开：`.cue-note` 折叠动画同上，但 02-script 是**浅色长滚动文档**，
+  **不需要 presenter 的 `.cues-peek` 溢出兜底**（展开只把下方内容推下去）。
+- 02-script 的 cue cards 是**双语并排**（`.cue-body` grid `1fr 1fr`），
+  每列各用本页对应语言的逐字稿做对齐，`cueBlock()` 要算 `segEn` / `segZh` 两份。
+
+**TDZ 陷阱（会导致整页白屏且 console 无报错）**：02-script 的
+`STOP` / `RELCH` / `ZHRE` 三个常量若声明在 `renderPage()` 中段，而同函数内更早的
+`DATA.sessions.forEach → sessionHTML → cueBlock → alignSegs → sentsOf` 会先执行，
+抛 `Cannot access 'ZHRE' before initialization`，`#root` 留空。**必须前置到
+`renderPage()` 顶部。** 排查手法：页面标题正常、无 console 报错但 `#root` 为空时，
+手动 `await bootstrap()` 抓异常栈，别只盯 console。
+
 ## hover 展开逐字稿片段（cue 行 → 讲稿对齐）
 
 演讲时对着压缩过的 cue 行讲，常需要「这句话在逐字稿里怎么说的」。做法：hover 某行时，
