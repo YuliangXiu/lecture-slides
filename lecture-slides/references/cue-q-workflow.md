@@ -83,9 +83,9 @@ POST `/api/save-feedback` → 501。真放映服务在 `play.command` 的
 脚本已改为自动抽取该 heredoc 起真服务，并在 `finally` 里快照/还原 `feedback.json`
 （真服务会刷新 `saved_at`，items 不变），保证验收零副作用。
 
-### 5.1 e2e 会清空 `feedback.json`（2026-09-09 实锤，必读）
+### 5.1 e2e 曾清空 `feedback.json` —— 已根治（2026-09-09）
 
-**症状**：跑完 e2e，`02-script/data/feedback.json` 从 N 条变 `count:0 / items:[]`。
+**症状（历史）**：跑完 e2e，`02-script/data/feedback.json` 从 N 条变 `count:0 / items:[]`。
 
 **机理**：headless 浏览器的 localStorage 是空桶，而 viewer 初始化末尾**无条件**调
 `fbScheduleSave()` → 600ms 后 POST `/api/save-feedback` 把 `fbCollect()` 的空数组写回，
@@ -93,8 +93,31 @@ POST `/api/save-feedback` → 501。真放映服务在 `play.command` 的
 （它要求 `items.length > 0`）。时间戳格式可区分：`...T..:..:...Z`（ISO）= 前端 save；
 `YYYY-MM-DD HH:MM:SS` = 服务端 clear。
 
-**这是「临时存储被覆盖」，不是数据丢失**：权威账本 `feedback-history.json` 的
-`records` 完好。恢复方法（19 条实测）：
+**根治方案（现行，`_shared/viewer/viewer.template.html`）**：落盘改为**脏检查 + 水合屏障**，
+「打开即无编辑」零写盘，e2e 不再需要快照还原（脚本里的还原逻辑保留作双保险）。
+
+1. **签名**：`fbSignature(items)` 取 `[sess, page, String(sid), type, text]` 五元组，
+   按完整元组排序后 `JSON.stringify` → 与 localStorage 迭代顺序无关。
+   **不能直接拿 `fbCollect()` 的输出做签名**：它按 `(sess, page, type)` 排序但**不含 sid**，
+   同页同类型的多个 sid 顺序不稳定。
+2. **基线存 sessionStorage**（key `fb-saved-sig`，跨 reload 保留），不放 localStorage——
+   后者会被 `fbCollect()` 当意见读回去。
+3. **水合播种基线**：`fbHydrate()` 用文件内容 `fbSignature(fileItems)` 播种基线
+   （数值字段 `+it.sess` / `+it.page` 强制转数字、`String(it.sid)`，否则文件存字符串时
+   签名与 `fbCollect()` 不一致，会被误判成「有改动」）。因此首屏永远不写盘。
+4. **水合屏障**：`fbHydrateSettled` 在 `finally` 置 true；`fbSave()` 开头
+   `if (!fbHydrateSettled) return;`，防止水合尚未把文件内容灌进 localStorage 时
+   用空 items 覆盖 `feedback.json`。
+5. 首屏末尾**删掉**无条件 `fbScheduleSave()`；落盘统一由 `fbHydrate()` 结束后触发一次
+   （顺带补写「上次编辑后 600ms 内就刷新」的差异）。
+
+**回归测试**：`_shared/viewer/tests/test_feedback_save.cjs`（F1–F6，断言
+「未编辑 posts===0 / 编辑一次 posts===1 / 重开不写盘 / 清空后再落盘」），
+已并入 `tests/run_all.sh` 第 4 套件（`BASE+3`）。
+**测试有效性靠反向对照**：把旧行为（去签名去重 + 恢复首屏无条件落盘）放回临时副本，
+F1/F2b/F3/F4a/F5 五项立刻挂 → 证明断言真的在测落盘次数，不是自证。
+
+**历史恢复方法**（若真被清空，权威账本 `feedback-history.json` 的 `records` 完好）：
 
 ```python
 import json
@@ -112,6 +135,9 @@ json.dump({'saved_at':'<ISO>','count':len(items),'items':items},
 防进程被强杀时 `finally` 未执行；② **等 `server.kill('SIGTERM')` 的 `exit` 事件后再还原**
 （见下条，否则还原被迟到的 POST 覆盖）；③ `finally` 还原后**回读比对**；
 ④ 跑完必须 `md5` 对比运行前后。
+
+> 5.1 根治后这四条是**双保险**，不再是「必须」。真正的验收判据仍建议跑 md5 对比——
+> 它能同时抓住别的流水线并发写盘。
 
 **`server.kill()` 是异步的 → 还原会被覆盖（2026-09-09 二次实锤）**：
 `spawn` 出来的服务进程收到 SIGTERM 后**不立即死**，若此刻还有 viewer 的
@@ -149,8 +175,11 @@ DECK_ENGINE="<课程根>/_shared/deck-engine"
 node "$DECK_ENGINE/check_deck.mjs" "03-slides/session-1"     # → {"status":"ALL CLEAN",...}
 # 跨 deck 终检（离线合规 + 控件 UX + presenter 双向导航）
 node "$DECK_ENGINE/final_accept.mjs" "http://127.0.0.1:<port>/<lecture>/03-slides" \
-     session-1 session-2 session-3 session-4 session-5 session-6
+     session-1 session-2 session-3 session-4 session-5
 ```
+
+> deck 列表**按 `03-slides/` 下实际目录写**，不要照抄。讲次做过 session 合并后旧目录已删除，
+> 硬写不存在的 deck 会 404。
 
 **`check_deck.mjs` 关键约定**：
 - 参数是 **deck 目录**（`03-slides/session-N`），它自己推 `LECTURE_ROOT = dir/../../`

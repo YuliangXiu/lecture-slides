@@ -1,6 +1,6 @@
 ---
 name: lecture-slides
-description: 制作 HTML 课件 / Lecture Slides 的完整体系，风格唯一：04-magazine 杂志排版风（米色纸面、衬线大标题、圆角卡片 + 顶部强调线、嵌套去重），并含 Keynote 式演讲者模式（观众屏全屏 + 演讲者屏预览/文稿/双进度条，按讲稿语速估算实时对比讲课节奏，file:// 双击可用），字体/媒体全离线本地化（VF 子集化，任何电脑断网打开完美复现），以及质量门禁与进阶组件（媒体框宽高比审计、布局平衡/留白审计、多页递进图像素对齐、视频片段编辑器 start/end 持久化），和从 151 条真实排版反馈归纳出的默认排版规律（Layout Doctrine：媒体主角放大、卡片等比不裁剪、砌砖无缝铺满、文字窄列让位、中英对照体系、渐进揭示动画）。当用户提到"做课件""lecture slides""课件样式/风格""框体样式统一""嵌套边框重复""演讲者视图""演讲者模式""双屏放映""presenter view""双进度条""讲课节奏""杂志风/编辑风课件""字体本地化""离线打开""自包含课件""排版优化""内容堆顶部/留白""媒体框比例/宽高比""递进图对齐""视频片段/剪辑区间""排版规律""布局偏好""媒体放大/铺满""砌砖布局""图文混排""卡片编辑器""改卡片/移动卡片""删卡片""缩放卡片""替换媒体""裁剪媒体""四角控件""编辑课件元素""cardmove/cardresize/carddel""slide-edits 落盘""部署发布""媒体瘦身/压缩""视频裁剪""图片转 webp""trims.json""04-deploy 镜像""source 不动 deploy 裁剪""学生版发布到主页""COS 发布""build_publish""多屏路由""双屏窗口落位""看片台""缩略图""元素序号标注""#序号 定位""放映服务""cue-cards""cue 卡片""q 字段""本页在回答什么问题""逐字稿处理""cue_q_check""cue_q_apply""q 覆盖率"时使用。适用于任何基于 CSS class 的静态 HTML 幻灯片/模板体系。
+description: 制作 HTML 课件 / Lecture Slides 的完整体系，风格唯一：04-magazine 杂志排版风（米色纸面、衬线大标题、圆角卡片 + 顶部强调线、嵌套去重），并含 Keynote 式演讲者模式（观众屏全屏 + 演讲者屏预览/文稿/双进度条，按讲稿语速估算实时对比讲课节奏，file:// 双击可用），字体/媒体全离线本地化（VF 子集化，任何电脑断网打开完美复现），以及质量门禁与进阶组件（媒体框宽高比审计、布局平衡/留白审计、多页递进图像素对齐、视频片段编辑器 start/end 持久化），和从 151 条真实排版反馈归纳出的默认排版规律（Layout Doctrine：媒体主角放大、卡片等比不裁剪、砌砖无缝铺满、文字窄列让位、中英对照体系、渐进揭示动画）。当用户提到"做课件""lecture slides""课件样式/风格""框体样式统一""嵌套边框重复""演讲者视图""演讲者模式""双屏放映""presenter view""双进度条""讲课节奏""杂志风/编辑风课件""字体本地化""离线打开""自包含课件""排版优化""内容堆顶部/留白""媒体框比例/宽高比""递进图对齐""视频片段/剪辑区间""排版规律""布局偏好""媒体放大/铺满""砌砖布局""图文混排""卡片编辑器""改卡片/移动卡片""删卡片""缩放卡片""替换媒体""裁剪媒体""四角控件""编辑课件元素""cardmove/cardresize/carddel""slide-edits 落盘""部署发布""媒体瘦身/压缩""视频裁剪""图片转 webp""trims.json""04-deploy 镜像""source 不动 deploy 裁剪""学生版发布到主页""COS 发布""build_publish""多屏路由""双屏窗口落位""看片台""缩略图""元素序号标注""#序号 定位""放映服务""cue-cards""cue 卡片""q 字段""本页在回答什么问题""逐字稿处理""cue_q_check""cue_q_apply""q 覆盖率""意见自动保存""feedback.json 被清空""看片台回归""run_all.sh"时使用。适用于任何基于 CSS class 的静态 HTML 幻灯片/模板体系。
 agent_created: true
 ---
 
@@ -221,6 +221,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **看片台（board）**：76 页缩略图一屏网格 + 跨 Session 拖拽重排，保存走 `/api/reorder-slides` → 重建 deck → 自动回看片台。
 - **缩略图管线（shoot_thumbs.cjs）**：sid 寻址 + `#/K/99` 直达最终展开态；三模式 `full` / `missing` / `since-solved`（增量，依赖 `resolved_at` 时间戳）；子进程必须注入 `NODE_PATH`。
 - **放映服务版本提示（postJSON）**：放映服务是旧 Python 进程时新路由回 404 HTML，`res.json()` 解析报晦涩错误——前端须对非 JSON 响应做「请重新双击 play.command」提示。
+- **看片台回归套件**：`bash _shared/viewer/tests/run_all.sh [repo_root]` 自动遍历 `lecture-*`，逐讲串行跑 4 套件——基础冒烟 / 看片台 E2E / 拖拽冒烟 / 意见落盘去重（端口 `BASE+0..3`）。**落盘套件在 `os.tmpdir()` 临时副本上跑，绝不碰真实 `feedback.json`**。
 
 ## Pitfalls
 
@@ -236,6 +237,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **本地 HTTP server 必须 run_in_background 持久启动**：普通命令里 `cmd &` 会随 shell 退出被回收，下一条命令连接被拒
 - **云同步目录文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
 - **BSD grep 在 macOS 上对含中文的多模式搜索会静默返回空**：`\|` 交替尤甚，已三次导致误判「内容缺失」。**核查一律用 Python `str.count()`/逐行匹配**，至少也要 `grep -E`/`grep -F`；不要用裸 `grep -n "a\|b"`。验证文案存在与否的正则要宽松，过严会把已落地内容误报为缺失（先读原文再定论）
+- **「打开即无编辑」绝不能写盘**（模块 H，2026-09-09 根治）：前端初始化末尾无条件 `fbScheduleSave()` 会让任何一次打开（刷新/多标签/e2e）都覆盖 `feedback.json`，逼得所有 e2e 必须做快照还原。正确做法是**脏检查 + 水合屏障**：`fbSignature()` 取 `[sess,page,String(sid),type,text]` 排序后序列化做签名（**不能直接用 `fbCollect()` 输出**，它排序不含 sid），基线存 **sessionStorage**（放 localStorage 会被当意见读回），`fbHydrate()` 用文件内容播种基线并在 `finally` 置 `fbHydrateSettled`，`fbSave()` 开头拦截未水合的落盘、签名相同直接 return。改完后 e2e 零副作用。详见 `references/cue-q-workflow.md` §5.1
 - **模块 E 是默认值不是可选项**：新建页面时直接按 Layout Doctrine 排版，不要先做"常规布局"再等用户反馈改——用户对此类反复调整的成本已明确表达过不满。唯一例外：用户当次指令明确要求不同做法
 - **"填满"与"不裁剪"冲突时的优先级**：先保 `object-fit:contain` 完整画幅（E2），再通过补图/补媒体把空间填满（E5），绝不靠 crop 或拉伸变形来凑满
 - **同文件多处修改严禁并行 Edit**（云同步目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
