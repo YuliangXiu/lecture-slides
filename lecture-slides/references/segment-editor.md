@@ -60,6 +60,7 @@ dataset 应用 → 播放钳制在片段内（timeupdate 后 currentTime ∈ [2,
 2. **观众视角不自动播放**：`play()` 被拒（数据未就绪/后台）时静默失败无重试；演讲者视图靠 presenter.html 800ms `goto` 重发自愈，观众窗口无此通道。修复：`tryPlay()` + `wantPlay` 标记 + `canplay`/`playing` 事件重试。
 
 验收注意（回归脚本 `_verify_dualview.mjs`，2026-09-09 重构后已随旧框架归档至
-`<备份目录>/bak/refactor-20260909-deadcode/newdeck-framework/`，需要时从归档取回运行）：
+`<备份目录>/refactor-*/…-archive/`，
+需要时从归档取回运行）：
 - 测试 HTTP 服务器**必须支持 Range 请求**，否则视频 seek 挂起（t 停在 0）造成假阴性。
 - 验证 presenter 必须走 presenter-inject 的 S 键路径打开（直接 `window.open` 会导致 `pwin=null`、hello 握手被忽略、iframe src 永空）。

@@ -10,8 +10,8 @@
 
 用法:
   COS_SECRET_ID=xxx COS_SECRET_KEY=yyy python3 cos_sync.py \
-      --src <本地目录> --prefix /<COURSE_ID>/media/decks/ \
-      [--bucket <COS_BUCKET>] [--region <COS_REGION>]   # 或导出 COS_BUCKET/COS_REGION/COS_PREFIX
+      --src <本地目录> --prefix /<lecture>/media/decks/ \
+      [--bucket <COS_BUCKET>-<AppID>] [--region <COS_REGION>] \
       [--apply]      # 缺省 dry-run，只打印将要上传/跳过的文件
 
 判重策略:
@@ -43,13 +43,11 @@ def iter_files(src):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True)
-    ap.add_argument("--prefix", default=os.environ.get("COS_PREFIX"), help="COS 前缀（如 /<COURSE_ID>/media/decks/），默认取 COS_PREFIX 环境变量")
-    ap.add_argument("--bucket", default=os.environ.get("COS_BUCKET"), help="COS 桶名（AppID 已含），默认取 COS_BUCKET 环境变量")
-    ap.add_argument("--region", default=os.environ.get("COS_REGION"), help="COS 区域，默认取 COS_REGION 环境变量")
+    ap.add_argument("--prefix", default="/<lecture>/media/decks/")
+    ap.add_argument("--bucket", default="<COS_BUCKET>-<AppID>")
+    ap.add_argument("--region", default="<COS_REGION>")
     ap.add_argument("--apply", action="store_true", help="真正上传；缺省 dry-run")
     args = ap.parse_args()
-    if not (args.bucket and args.region and args.prefix):
-        ap.error("--bucket / --region / --prefix 须提供（或导出 COS_BUCKET / COS_REGION / COS_PREFIX）")
 
     secret_id = os.environ.get("COS_SECRET_ID")
     secret_key = os.environ.get("COS_SECRET_KEY")

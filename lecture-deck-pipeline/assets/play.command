@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-#  <课程标题> — play.command（双击运行）
-#  在课程根目录起本地 http 服务并打开浏览器。
+#  <课程名> · Lecture 1 — play.command（双击运行）
+#  在课程根目录 <lecture> 起本地 http 服务并打开浏览器。
 #  讲稿 JSON 必须经 http 加载（file:// 会被浏览器拦截）。
 #  停止服务：关闭本终端窗口，或按 Ctrl-C。
 # ============================================================
@@ -14,7 +14,7 @@ while /usr/bin/python3 -c "import socket,sys; sys.exit(0 if socket.socket().conn
 done
 
 echo "======================================================"
-echo "  Lecture N 放映服务已启动"
+echo "  Lecture 1 放映服务已启动"
 echo "  逐字稿对照页:  http://localhost:$PORT/02-script/"
 echo "  Session 1:     http://localhost:$PORT/03-slides/session-1/"
 echo "  Session 2:     http://localhost:$PORT/03-slides/session-2/"

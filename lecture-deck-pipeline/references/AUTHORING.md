@@ -1,4 +1,4 @@
-<!-- kept in sync with _shared/deck-engine/AUTHORING.md -->
+<!-- synced from _shared/deck-engine/AUTHORING.md (2026-09-09) -->
 # AUTHORING GUIDE — Magazine Editorial deck (fixed 1920×1080 stage)
 
 Engine: fixed 16:9 stage (`.deck-viewport > .deck-stage#deckStage`, 1920×1080, scaled by JS).
@@ -22,7 +22,7 @@ generates the section/s-wrap/s-page wrapper — your `html` field is the content
   the source, `dataset.notes = 'ok'` immediately — check_deck passes without a JSON).
   Presenter mode reads notes from the deck page
   (postMessage), so it needs the page served over http (file:// fetch is blocked).
-- Notes display (engine.js + presenter.html): notes are split into
+- Notes display (engine.js + presenter.html, 2026-09-02): notes are split into
   sentences (`splitNotes`, abbreviation-aware — Dr./e.g./etc. don't break) and
   rendered as one <p> per sentence with a blank line between them — in BOTH the
   deck N-overlay (.deck-notes p) and the presenter script panel (#nbody p). The
@@ -30,15 +30,15 @@ generates the section/s-wrap/s-page wrapper — your `html` field is the content
   estimated duration (inPage/durs[i]) × speed. e2e compares notes text with
   whitespace stripped (`replace(/\s+/g,'')`) because <p> concatenation drops
   inter-sentence spaces.
-- Sentence-splitting hardening: name initials like
-  "Michael J. Black" must NOT split at "J." — rule = standalone single capital
+- Sentence-splitting hardening (2026-09-02 PM): name initials like
+  "Prof. A. B. Surname" must NOT split at "B." — rule = standalone single capital
   letter + preceding word capitalized (name) → no split; preceding word
   lowercase (e.g. "part A.") → normal boundary. Guard: if the FOLLOWING word is
   a sentence-starter (Now/And/So/This/...), split anyway (covers "Part B.
   Now..."). GOTCHA: a match() regex without a capture group makes m[1]
   undefined — `/^[A-Z]/.test(undefined)` silently tests the string "undefined"
   (false). Always add the capture group you index.
-- Scroll speed bar: presenter notes header has a range slider
+- Scroll speed bar (2026-09-02 PM): presenter notes header has a range slider
   (×0.5–×3) persisted in localStorage key `DH_notes_scroll_speed` — global
   across all decks/sessions on the same origin (localhost:port; a different
   port = different origin = fresh store). Manual scrolling no longer pauses
@@ -81,8 +81,8 @@ generates the section/s-wrap/s-page wrapper — your `html` field is the content
   `.wam { flex:1; min-height:0; display:grid; grid-template-columns:1032px 668px;
   grid-template-rows:280px 280px 1fr; gap:20px 28px }` — explicit px columns/rows, the
   `1fr` last row absorbs leftover height and pushes content flush to the bottom edge.
-- **Audit programmatically** (don't eyeball every page): `audit_layout.mjs <session_dir>`
-  serves the deck over http and walks every page measuring
+- **Audit programmatically** (don't eyeball 81 pages): `audit_layout.mjs <session_dir>`
+  (archived in the framework) serves the deck over http and walks every page measuring
   the max content `bottom`/`right` vs `TARGET_BOTTOM=1016`. Element-filtering gotchas —
   you MUST exclude or the result is a useless "everything = 1080×1920":
   - `.s-wrap` — the full-height padding wrapper (exclude by class).
@@ -92,10 +92,11 @@ generates the section/s-wrap/s-page wrapper — your `html` field is the content
   - `.scrollrow` inner content — horizontal overflow is by design; keep the `.scrollrow`
     container itself (for its bottom) but skip its children.
   - `.deck-controls` / `.deck-toc` / `.deck-notes` UI chrome.
-- **Cold-open cinematic exception**: a deliberate "cold open" beat sequence (centered
-  column `left:296; width:1327`, image `top:161; height:758` (bottom 919),
-  caption/foot `top:950` → bottom ≈979) is NOT misalignment: it is a DELIBERATE cinematic
-  sequence with a uniform ~37px gap at the bottom. It is
+- **Cold-open cinematic exception (S1 p12–15)**: the "The Main Medium of Intellect /
+  The Measure of All Things / The Definition of AGI / The First Step to AGI" sequence is
+  a DELIBERATE cinematic "cold open" beat, NOT misalignment. It shares one template:
+  centered column `left:296; width:1327`, image `top:161; height:758` (bottom 919),
+  caption/foot `top:950` → bottom ≈979, a uniform ~37px gap at the bottom. It is
   internally pixel-consistent; keep the WHOLE sequence consistent if you ever touch one
   page (the 37px gap is breathing room, not a bug — confirmed with the instructor).
 
@@ -122,7 +123,7 @@ generates the section/s-wrap/s-page wrapper — your `html` field is the content
 - Inline SVG diagrams: `<div class="g-html"><svg viewBox="…">…</svg></div>` — keep text ≥ 18px, use `var(--accent)` / `var(--ink)`.
 - Reveal animation: add `rv d1…d6` classes to top-level blocks (`rl/rr/rs` variants).
 
-## Media rules (unified layout)
+## Media rules (unified layout, 2026-09-03)
 Decks live at `…/lecture-NN/03-slides/session-N/`; media and fonts live at the
 `03-slides/` level (ONE physical copy per lecture — never inside session dirs):
 
@@ -132,7 +133,8 @@ Decks live at `…/lecture-NN/03-slides/session-N/`; media and fonts live at the
   (page = 1-based slide number, idx = order on page; subdirs like `hero/`, `lab/` allowed)
 - source library (creative archive, never referenced by decks at runtime):
   `media/_source/{history,modern,kepu}/…`
-- Index: regenerate `media/INDEX.md` + `media-manifest.json` via the reorg tool after adding media.
+- Index: regenerate `media/INDEX.md` + `media-manifest.json` via
+  `03-slides-reorg-tools/gen_index.py <03-slides-root>` after adding media.
 
 In content modules reference assets as (deck sits one level below 03-slides/):
 
@@ -156,7 +158,8 @@ slides — always re-typeset raw data with components.
 # 任意 cwd 均可，构建器自动上溯定位 _shared
 python3 _shared/build/deck_builder.py <module.py> <out_dir>
 NODE_PATH=<含 playwright 的 node_modules 所在目录> \
-  node _shared/deck-engine/check_deck.mjs <out_dir>
+  node \
+  _shared/deck-engine/check_deck.mjs <out_dir>
 ```
 check_deck.mjs reports: per-slide overflow (>1080/1920), broken media, JS errors,
 missing notes, controls presence. Iterate until "ALL CLEAN".
@@ -173,9 +176,9 @@ missing notes, controls presence. Iterate until "ALL CLEAN".
 - Grouped units must NOT rely on transform for the reveal (pins etc. keep their own
   transform); the CSS transition is opacity-only.
 - `#/N/S` hash and 02-script side frames work unchanged; regen unit counts with
-  `python3 _shared/build/gen_deckmeta.py <lecture_root>` (counts max data-vu when present, else <video>).
+  `python3 _shared/build/gen_deckmeta.py <lecture_root>` (counts max data-vu when present, else <video).
 
-## Keyboard control (arrow keys)
+## Keyboard control (arrow keys, 2026-09)
 - **↓ / ↑ = current-page animation steps only** (`vstepNext`/`vstepPrev`). On pages
   without vstep units, or already at the first/last step, they do NOTHING — they
   never turn the page.
@@ -189,7 +192,7 @@ missing notes, controls presence. Iterate until "ALL CLEAN".
 - EMBED mode, segPanel-open state, and INPUT/TEXTAREA focus still swallow all of
   the above (unchanged guard order in the keydown handler).
 
-## Map-with-pins recipe (exact-fit crop)
+## M<COS_REGION>-pins recipe (exact-fit crop)
 - Pin (left,top) % are relative to the map container AND assume the image fills it
   exactly. If the container aspect ≠ image aspect, object-fit shifts the geography.
 - Deterministic fix: measure the container (W×H px), then pre-crop the image to
@@ -208,19 +211,20 @@ missing notes, controls presence. Iterate until "ALL CLEAN".
 - GOTCHA: `ln -sfn src dir` onto an EXISTING dir nests the symlink inside it
   (media/media) — rm the dir first, then `ln -s`.
 
-## Thumbnail gallery recipe (hover + click)
-- Effect = `transition: transform .3s ease` on the img, `.item:hover img { transform:
+## Thumbnail gallery recipe (hover + click, ported from <主页域名>)
+- Site source of truth: thumbnail.html (MOCK_IMAGES: name→url→link) + css/thumbnail.css.
+  Effect = `transition: transform .3s ease` on the img, `.item:hover img { transform:
   scale(1.05) }` cropped by an `overflow:hidden` plate, click opens the paper page.
 - In a deck, wrap each figure `<img>` in `<a class="hwl" href="LINK" target="_blank"
   rel="noopener">` with the plate styles on the anchor (display:block + the img's old
   w/h + overflow:hidden). Do the wrap as an IDEMPOTENT post-process at the END of the
   content module (deck_builder imports it), matching only bare hero `<img>` tags so
   re-import can't double-wrap; guard with `if '.hwl:hover img' in html: return html`.
-- Hero filenames (hero-1..hero-N + a/b variants) map 1:1 to the site thumbnail
-  numbering → the anchor href is the same publication page slug (target _blank for
+- Hero filenames (hero-1..hero-30 + a/b variants) map 1:1 to the site thumbnail
+  numbering → the anchor href is the same publication.html#<slug> (target _blank for
   lecture use; deck stays offline, link activates only on click).
 
-### Advanced: hover to CENTER (zoom to ~60% slide)
+### Advanced: hover to CENTER (zoom to ~60% slide, "蹦到 slide 中间")
 - When you want the hovered thumb to pop out and CENTER itself on the 1920×1080 slide
   (instead of scaling in place), use:
   `.hwl:hover img { position:fixed; left:50%; top:50%;

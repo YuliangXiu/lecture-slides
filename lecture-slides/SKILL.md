@@ -6,6 +6,8 @@ agent_created: true
 
 # Lecture Slides（04-magazine 风格课件 + 演讲者模式）
 
+> **三件套中的本 skill 负责「怎么做」**：视觉体系、演讲者模式、离线本地化、质量门禁、排版守则、编辑器与工作台的设计。另两个是 `lecture-deck-pipeline`（本脚手架的建构/复刻/验收/打磨运维，含原 `polish-slides`）与 `deploy-slides`（部署发布）。本 skill 的内容**不依赖任何具体课程脚手架**，换一个 deck 项目照样适用。
+
 ## Overview
 
 为课件（HTML Lecture Slides）提供三大能力，均以 **04-magazine 杂志排版风**为唯一视觉标准：
@@ -25,7 +27,7 @@ agent_created: true
 
 ### 视频素材下载（前置，涉及外部视频链接时必做）
 
-当课件页面需要引入 YouTube 或 Bilibili 视频素材时，先调用 `video-download` skill（前置依赖）把视频下载到本地 `03-slides/media/decks/session-N/videos/`，再接入 deck（`<video data-vid>` + `video_config`）。**默认行为（用户 2026-09-06 指定）：只要用户给出 YouTube/Bilibili 链接就自动下载到本地，无需确认；只有全部方案失败才上报并保留 iframe 兜底。** 禁止直接用 YouTube/Bilibili iframe 嵌页面——破坏离线自包含（模块 C），观众断网打不开。
+当课件页面需要引入 YouTube 或 Bilibili 视频素材时，先调用 `video-download` skill（`video-download skill 目录`）把视频下载到本地 `03-slides/media/decks/session-N/videos/`，再接入 deck（`<video data-vid>` + `video_config`）。**默认行为（用户 2026-09-06 指定）：只要用户给出 YouTube/Bilibili 链接就自动下载到本地，无需确认；只有全部方案失败才上报并保留 iframe 兜底。** 禁止直接用 YouTube/Bilibili iframe 嵌页面——破坏离线自包含（模块 C），观众断网打不开。
 
 ### Step 0 — 判定模块
 
@@ -130,7 +132,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 
 ### 模块 E — 默认排版规律（Layout Doctrine，强制默认）
 
-> 来源：真实课程项目 151 条已解决的排版反馈（2026-08~09，六轮 polish 定稿）+ 最终代码形态核验（S2.05/S2.06/S2.28/S3.06/S3.12d/S3.15/Failure Gallery）。以下规则是**用户排版审美的默认值**——生成任何新页面时直接按此排版，第一版就要符合，不逐次试探。频率最高的不满词是"太空了"；频率最高的指令是"铺满/撑满/拉满/等宽/对齐/不裁剪"。
+> 来源：`<lecture>` 课程 151 条已解决的排版反馈（2026-08~09，六轮 polish 定稿）+ 最终代码形态核验（S2.05/S2.06/S2.28/S3.06/S3.12d/S3.15/Failure Gallery）。以下规则是**用户排版审美的默认值**——生成任何新页面时直接按此排版，第一版就要符合，不逐次试探。频率最高的不满词是"太空了"；频率最高的指令是"铺满/撑满/拉满/等宽/对齐/不裁剪"。
 
 **E1 媒体主角原则（图/视频优先于文字）**
 - 页面只要含媒体，媒体就是视觉主体。目标高度 ≥80% 可用 body 高度（多图 90–100%），横版大图直接 100% height。
@@ -223,6 +225,8 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **放映服务版本提示（postJSON）**：放映服务是旧 Python 进程时新路由回 404 HTML，`res.json()` 解析报晦涩错误——前端须对非 JSON 响应做「请重新双击 play.command」提示。
 - **看片台回归套件**：`bash _shared/viewer/tests/run_all.sh [repo_root]` 自动遍历 `lecture-*`，逐讲串行跑 4 套件——基础冒烟 / 看片台 E2E / 拖拽冒烟 / 意见落盘去重（端口 `BASE+0..3`）。**落盘套件在 `os.tmpdir()` 临时副本上跑，绝不碰真实 `feedback.json`**。
 
+> **🚧 边界**：本节描述**能力与设计**。这些工具的**脚手架专属实战坑**——`let board` 的 TDZ、`aspect-ratio` + 百分比宽在 CSS Grid 崩成 2px、缩略图指纹必须含 `RENDER_VER`、拍摄重影（`CAPTURE_CSS`）、KaTeX 重复注入、看片台的 dirty 守卫与垃圾桶语义、回归套件的完整清单与**已知假红**——全部记在 **`lecture-deck-pipeline`** skill 的「看片台 / 缩略图 / 隐藏页」相关章节，不在本 skill 重复。
+
 ## Pitfalls
 
 - **不要用 JS 逐元素加类**：纯 CSS `:is()` 祖先-后代结构即可表达"嵌套深度 ≥ 1"，零 DOM 改动
@@ -235,12 +239,10 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **预览 iframe 首帧带 `#/N` hash 直达当前页**，避免闪第 1 页
 - **悬停显现的按钮（`opacity:0; pointer-events:none`）不可交互**：Playwright hit-target 检测在鼠标移动前就失败，触屏也不可用——用常驻低透明度（.18）+ hover 加深
 - **本地 HTTP server 必须 run_in_background 持久启动**：普通命令里 `cmd &` 会随 shell 退出被回收，下一条命令连接被拒
-- **云同步目录文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
-- **BSD grep 在 macOS 上对含中文的多模式搜索会静默返回空**：`\|` 交替尤甚，已三次导致误判「内容缺失」。**核查一律用 Python `str.count()`/逐行匹配**，至少也要 `grep -E`/`grep -F`；不要用裸 `grep -n "a\|b"`。验证文案存在与否的正则要宽松，过严会把已落地内容误报为缺失（先读原文再定论）
-- **「打开即无编辑」绝不能写盘**（模块 H，2026-09-09 根治）：前端初始化末尾无条件 `fbScheduleSave()` 会让任何一次打开（刷新/多标签/e2e）都覆盖 `feedback.json`，逼得所有 e2e 必须做快照还原。正确做法是**脏检查 + 水合屏障**：`fbSignature()` 取 `[sess,page,String(sid),type,text]` 排序后序列化做签名（**不能直接用 `fbCollect()` 输出**，它排序不含 sid），基线存 **sessionStorage**（放 localStorage 会被当意见读回），`fbHydrate()` 用文件内容播种基线并在 `finally` 置 `fbHydrateSettled`，`fbSave()` 开头拦截未水合的落盘、签名相同直接 return。改完后 e2e 零副作用。详见 `references/cue-q-workflow.md` §5.1
+- **云同步目录 文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
 - **模块 E 是默认值不是可选项**：新建页面时直接按 Layout Doctrine 排版，不要先做"常规布局"再等用户反馈改——用户对此类反复调整的成本已明确表达过不满。唯一例外：用户当次指令明确要求不同做法
 - **"填满"与"不裁剪"冲突时的优先级**：先保 `object-fit:contain` 完整画幅（E2），再通过补图/补媒体把空间填满（E5），绝不靠 crop 或拉伸变形来凑满
-- **同文件多处修改严禁并行 Edit**（云同步目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
+- **同文件多处修改严禁并行 Edit**（云同步目录 目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
 - **E2E 断言查视觉值（getBoundingClientRect）而非仅内联值**：flex-basis / transform 等会让内联 `style.*` 落下但视觉不变，只断言内联值会假通过
 - **getBoundingClientRect 返回 transform 后视觉盒**：stage scale 缩小不改变元素中心；计算「两控件是否重叠/相距多远」要用视觉值，别用布局值
 - **「某按钮没显示」先 dump DOM 判断是否真未渲染**：常见根因是坐标/层级重叠（后被渲染的兄弟盖住它），不是条件判断/样式/事件绑定问题
@@ -250,6 +252,9 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **自起服务加接口必须做非 JSON 版本提示**（模块 H）：`play.command` 这类脚本自起服务的旧 Python 进程「静态文件即时生效、进程不会」，新路由回 404 HTML 被 `res.json()` 解析报 `Unexpected token '<'`。前端统一 `postJSON` 封装，响应 `Content-Type` 非 JSON → 提示「放映服务是旧版本，请重新双击 play.command」
 - **GIF→WebP 用 Pillow 必须逐帧收集 duration**（模块 G）：Pillow 12 的 `WebPImagePlugin._save_all` 只在打开时读一次 duration，不传 list 会全帧压成第一帧时长（总时长漂移）。逐帧收集 `gd=[im.info["duration"]...]` 后 `save(..., duration=gd, loop=0, method=6, quality=80)`；libwebp 会合并「逐像素等于前一帧」的 hold 重复帧，容器帧数可能少于源 GIF——是合并不是丢帧
 - **Playwright `page.evaluate(fnString, arg)` 不会自动调用字符串函数**（模块 H）：必须传真函数值或 IIFE 字符串，否则拿到的只是函数体文本
+- **live ↔ 公开版同步必须用「差异二分法」**（本仓库维护者专属，不同步到公开版——公开版读者没有 live 版这个前提）：公开 monorepo 是便携净化版（实例值占位化），**禁止整目录 `cp -R` live→repo**——会把真实路径/桶名/用户名带进公开仓。逐个 diff 分两类：①**便携化改写**（`<课程根>`/`<COS_BUCKET>`/`云同步目录`/去品牌名/去人称）→ **不回写**，回写会破坏公开版的可复用性；②**live 新功能**（新增章节、新增 pitfall、行为变更）→ **必须同步**，用 Edit 只搬功能段落、保留占位符。逐行 diff 是唯一可靠手段：只看「文件不同」会把缺整节的功能遗漏误判成便携化（2026-09-09 实测因此漏掉 presenter-mode.md 的 02-script 同步章节 + TDZ 陷阱、deploy-slides 的 Stage 0a、polish-slides 的 3 条 pitfall）。同步后跑一遍正则分类脚本，确认剩余差异全部命中便携化特征词
+- **BSD grep 在 macOS 上对含中文的多模式搜索会静默返回空**：`\|` 交替尤甚，已三次导致误判「内容缺失」。**核查一律用 Python `str.count()`/逐行匹配**，至少也要 `grep -E`/`grep -F`；不要用裸 `grep -n "a\|b"`。验证文案存在与否的正则要宽松，过严会把已落地内容误报为缺失（先读原文再定论）
+- **「打开即无编辑」绝不能写盘**（模块 H，2026-09-09 根治）：前端初始化末尾无条件 `fbScheduleSave()` 会让任何一次打开（刷新/多标签/e2e）都覆盖 `feedback.json`，逼得所有 e2e 必须做快照还原。正确做法是**脏检查 + 水合屏障**：`fbSignature()` 取 `[sess,page,String(sid),type,text]` 排序后序列化做签名（**不能直接用 `fbCollect()` 输出**，它排序不含 sid），基线存 **sessionStorage**（放 localStorage 会被当意见读回），`fbHydrate()` 用文件内容播种基线并在 `finally` 置 `fbHydrateSettled`，`fbSave()` 开头拦截未水合的落盘、签名相同直接 return。改完后 e2e 零副作用。详见 `references/cue-q-workflow.md` §5.1
 
 ## Resources
 

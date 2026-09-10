@@ -243,7 +243,7 @@ if (c === '\u3002' || c === '\uff01' || c === '\uff1f') {
   out.push(buf.trim()); buf = ''; i = j - 1; continue;
 }
 var next = s[j];
-/* next 为汉字（中文文本里夹的英文句点，如 "Michael Black。"）同样视为句界 */
+/* next 为汉字（中文文本里夹的英文句点，如 "你好。"）同样视为句界 */
 if (j >= s.length || next === ' ' || /[\u4e00-\u9fa5]/.test(next)) { ... }
 ```
 

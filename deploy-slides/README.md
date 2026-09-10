@@ -9,4 +9,4 @@
 - `scripts/cos_sync.py` — COS 幂等上传（SDK 备选，coscmd 不可用时用）。
 - `scripts/scrub_placeholders.py` — Stage 8 PII 占位化断言脚本（`sub1`/`subN`/`forbid` 三函数）。
 
-与 `lecture-slides`（模块 G）配合使用：裁剪/瘦身执行器的**实现细节**在 lecture-slides，本 skill 负责**端到端编排 + COS 上传 + 主页发布**。公开版与 live 版的占位化差异属设计内，便携化改写不回写 live。
+与 `lecture-slides`（模块 G）配合使用：裁剪/瘦身执行器的**实现细节**在 lecture-slides，本 skill 负责**端到端编排 + COS 上传 + 主页发布**。公开版（monorepo）与 live 版的占位化差异属设计内，便携化改写不回写 live。

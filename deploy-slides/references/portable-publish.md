@@ -1,6 +1,6 @@
 # 公开便携化发布（Publish a Portable Copy）
 
-> 本 skill 的 live 版（`~/.workbuddy/skills/deploy-slides/`）含真实路径、品牌名、实例值——只适合本机用。若要把它发布到公开仓库（如 GitHub monorepo）供他人复用，必须先做 **PII 便携化**：把实例值替换为占位符，并保证公开树 0 个 PII 命中。本文档是这条「live → 公开便携版」发布链路的完整配方。
+> 本 skill 的 live 版（`<本 skill 目录>/`）含真实路径、品牌名、实例值——只适合本机用。若要把它发布到公开仓库（如 GitHub monorepo）供他人复用，必须先做 **PII 便携化**：把实例值替换为占位符，并保证公开树 0 个 PII 命中。本文档是这条「live → 公开便携版」发布链路的完整配方。
 
 ## 双层策略（贯穿始终）
 
@@ -26,7 +26,7 @@
 | 本 skill 目录 | `<本 skill 目录>` |
 
 两类通用化改写（品牌/实例引用 → 通用表述）：
-- 品牌名 → 通用词：OneDrive →「云同步目录」、Digital Humans →「HTML 课件」、具体课程目录名（如 `lecture-01-introduction`）→「真实课程项目」
+- 品牌名 → 通用词：云同步产品名 →「云同步目录」、课程名 →「HTML 课件」、具体课程目录名（如 `lecture-XX-name`）→「真实课程项目」
 - 描述性名称 → 直白词：`lecture-xx 课程 151 条反馈` → `真实课程项目 151 条反馈`
 
 ## 流程（严格执行，勿跳步）
@@ -49,12 +49,23 @@ python3 scripts/scrub_placeholders.py
 对公开树重跑敏感 token 扫描。**macOS BSD grep 注意**：多分支模式用 `grep -E` + `|`，不能用 `\|`（BSD 不按字面解释 `\|`，会静默无输出）。
 
 ```bash
-# 把 <你的实例值> 替换为你本机的真实值再跑
-grep -rnE '<本机绝对路径>|<云同步目录品牌>|<学校/课程名>|<你的用户名>|<你的域名>|<COS桶名>|<COS区域>|<课程slug>|<课程目录名>|<你的邮箱>|sk-[A-Za-z0-9]{6}|AKIA|PRIVATE KEY' . --exclude-dir=.git
+grep -rnE '<本机绝对路径前缀>|<云同步目录>|<机构名>|<课程名>|<作者名>|<COS 桶名>|<COS 区域>|<课程 slug>|<课程目录名>|<邮箱域名>|sk-[A-Za-z0-9]{6}|AKIA|PRIVATE KEY' . --exclude-dir=.git
 ```
-目标：**EXIT=1（零命中）**。只允许保留两类通用路径：
-- `~/.workbuddy/skills/<skill>` 安装说明（`~` 指任意用户主目录，非具体用户名）
+目标：**EXIT=1（零命中）**。只允许保留三类：
+- `<skill 安装目录>/skills/<skill>` 安装说明（`~` 指任意用户主目录，非具体用户名）
 - 「云同步目录」「真实课程项目」等已通用化的词
+- **配方文档自身的规则表/词表/示例**（见下）
+
+**命中必须先二分再动手，别一刀切判 DIRTY**（2026-09-09 实测教训）：
+
+| 类别 | 例子 | 处置 |
+|---|---|---|
+| **硬身份信息**（零容忍） | `/Users/<name>` 绝对路径、邮箱、用户名、`云同步目录`、学校名、真实课程目录名、`sk-…`/`AKIA` | 必须清理 |
+| **配方教学示例**（必须保留） | 本文档的品牌名改写规则表（含 `<lecture>` 作示例）、`scrub_placeholders.py` 的 `FORBID` 词表、grep 模板里的 `PRIVATE KEY`/`AKIA` | 保留，白名单排除 |
+
+一刀切扫描会把配方文档判成 DIRTY，导致误改甚至误删有价值的审计词表。扫描脚本要带
+`ALLOW_SUBSTR` 白名单（匹配**整行**特征串，如 `FORBID = [`、`云同步目录 →「云同步目录」`），
+只对非白名单命中判失败；白名单是**分析工具参数**，不写入任何镜像文件。
 
 命中则逐文件 Edit 清理，不要用批量 sed。
 
@@ -74,6 +85,19 @@ git grep -nE '<敏感token>' <远端ref> -- .
 ```
 > ⚠️ 教训（2026-09-08 实测）：远端曾有一个同主题提交 `573ddef` 根本**没 scrub**，含 30+ 处实例值已公开。若只 push 本地而不复验远端，PII 会留在公开历史里。
 
+**再扫一遍全历史**（`git rev-list <远端ref>` 逐提交 × 全树），别只扫 HEAD——
+旧提交里的残留 HEAD 可能已修掉，但仍在公开历史中可被 `git log -p` 翻出。
+判据同上（硬/软二分），重点确认「硬身份信息」是否曾经出现过：
+
+```bash
+for c in $(git rev-list origin/main); do
+  for f in $(git ls-tree -r --name-only "$c"); do
+    git show "$c:$f" | grep -nE '/Users/[A-Za-z]|[[:alnum:]_.+-]+@[[:alnum:]_-]+\.[A-Za-z]{2,}|<作者>|云同步目录' && echo "  ^^ $c $f"
+  done
+done
+```
+零命中即公开历史干净，**无需 force-with-lease 重写**（重写有分叉风险，非必要不做）。
+
 若远端有含 PII 的同主题提交：
 1. 确认其父提交 == 本地 HEAD（无分叉）
 2. 在父提交上直接 commit 干净便携版
@@ -91,6 +115,8 @@ git grep -nE '<敏感token>' <远端ref> -- .
 |---|---|
 | macOS `grep -C2 "a\|b"` 无输出 | 改用 `grep -E -C2 'a|b'` |
 | 只信本地状态，忽略 fetch 到的新提交 | Step 4 必须对远端 ref 做 PII 复验 |
+| 只扫 HEAD，不扫全历史 | 旧提交残留仍在公开历史；Step 4 用 `git rev-list` 逐提交扫 |
+| 一刀切把配方文档判成 DIRTY | 硬身份信息 vs 配方教学示例二分；脚本带 `ALLOW_SUBSTR` 白名单 |
 | 脚本里写死实例默认值 | 改为读环境变量（如 `COS_BUCKET/COS_REGION/COS_PREFIX`），缺参 `argparse.error()` fail-fast |
 | 硬编码他人安装目录路径 | 用 `<本 skill 目录>` 占位 |
 | 想让公开仓库像 live 一样直接跑 | 放弃——公开版可读性/可复用性优先，参数占位化 + 文档说明 |

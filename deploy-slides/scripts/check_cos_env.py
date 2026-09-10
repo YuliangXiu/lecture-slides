@@ -75,14 +75,14 @@ def main():
         print("[MISSING_TOOL] 未找到 rclone 或 coscmd（COS 上传工具）")
         print("  首选 rclone:  brew install rclone")
         print("              rclone config  # 新建 remote: type=s3, provider=TencentCOS, endpoint=cos.<COS_REGION>.myqcloud.com")
-        print("  备选 coscmd: python3 -m venv <venv>")
+        print("  备选 coscmd: <skill 安装目录>/binaries/python/versions/3.13.12/bin/python3 -m venv <venv>")
         print("              <venv>/bin/pip install coscmd")
         sys.exit(1)
 
     if not key_ok:
         print("[MISSING_KEY] 上传工具已装（%s）但无密钥" % tool)
         print("  rclone: 确认 ~/.rclone.conf 有 [cos] remote（rclone config 新建/编辑）")
-        print("  coscmd: coscmd config -a <SecretId> -s <SecretKey> -b <COS_BUCKET> -r <COS_REGION>")
+        print("  coscmd: coscmd config -a <SecretId> -s <SecretKey> -b <COS_BUCKET>-<AppID> -r <COS_REGION>")
         print("  或导出: export COS_SECRET_ID=... COS_SECRET_KEY=...")
         sys.exit(2)
 

@@ -5,10 +5,9 @@
 前提：/tmp/vfonts/ 已下载 VF 原字（google/fonts GitHub ofl/ 目录，注意 [wght] 转义 %5B%5D）。
 产出：DECK/media/fonts/{fonts.css, N×woff2}，并把两个 HTML 的字体 link 指向本地。
 
-依赖：运行本脚本的 python 需装有 fonttools + brotli（`pip install fonttools brotli`）；
-子集化调用同一解释器（可用环境变量 PYTHON_BIN 覆盖）。
+依赖：<venv>/bin/python -m pip install fonttools brotli
 """
-import os, re, subprocess, sys, html as H
+import os, re, subprocess, html as H
 
 # ==== 按课件修改这三处 ====
 DECK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "your-deck")  # 课件目录
@@ -24,7 +23,7 @@ FONTS = [  # (源文件, 输出名, css family, 斜体?)
 RANGE = {"Noto Serif SC": "200 900", "Noto Sans SC": "100 900",
          "Playfair Display": "400 900", "JetBrains Mono": "100 800"}
 
-PY = os.environ.get("PYTHON_BIN") or sys.executable  # 装有 fontTools 的 python（默认取运行本脚本的解释器）
+PY = os.path.expanduser("<venv>/bin/python")
 FDIR = os.path.join(DECK, "media", "fonts")
 
 # ---- 1. 字符集：全部文本 + data-notes/ttitle 讲稿 + ASCII + 全角标点缓冲 ----

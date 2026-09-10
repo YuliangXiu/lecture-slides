@@ -37,7 +37,7 @@ y窗口 = H - (y + h)
 3. **`open_on_screen()`**：AppleScript `make new window with properties {bounds:{x,y,x+w,y+h}}`（全局坐标可为负）建窗 → `set URL of active tab of front window` 导航。
 4. **打开顺序**：先逐字稿（主屏）→ `sleep 1` → 观众 deck（扩展屏），保证 deck 居前拿焦点。
 5. **回退链**：扩展屏缺失 → 回退主屏；AppleScript 失败 → 回退普通 `open`。
-6. **默认打开的 deck 是 `/03-slides/session-1/`，不是 `/04-deploy/`**（2026-09-09 起，用户明确要求）。单屏回退分支同样开 02-script + 03-slides/session-1（不注入 pv*）。改 `play.command` 时各 lecture 的副本要一起对齐。
+6. **默认打开的 deck 是 `/03-slides/session-1/`，不是 `/04-deploy/`**（2026-09-09 起，用户明确要求）。单屏回退分支同样开 02-script + 03-slides/session-1（不注入 pv*）。改 play.command 时两份（<lecture>/02）要一起对齐。
 
 ## pv* 传参链（deck → presenter 的目标屏定位）
 
