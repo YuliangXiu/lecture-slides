@@ -16,6 +16,24 @@ agent_created: true
 
 **原 `polish-slides` 已于 2026-09-10 并入本 skill**（见「打磨闭环」一节）——四类意见的路由、逐字稿改写原则、`feedback-history.json` 队列与状态回写都在这里，不要再找那个 skill。
 
+## 入口路由（按用户说什么，直接跳到对应章节）
+
+本 skill 覆盖面较宽，**先定位意图再读章节**，不要通读全文：
+
+| 用户说的话（典型） | 去哪一节 | 需不需要重建 deck |
+|---|---|---|
+| **「polish-slides <feedback-history.json 路径>」/「把未处理的意见应用到课件」/「按意见改课件」** | **「打磨闭环」** | 改 `ppt`/`insert-*` 要；只改 `script` 不用 |
+| 改逐字稿 / 中英对照 / notes 不显示 | 「打磨闭环」+「核心架构约束」的 notes 单一数据源 | 不用 |
+| 做课件 / 建 deck / 新讲义 / slides 重建 | 「Workflow：新建一讲」 | 要 |
+| 复刻 / 与源 PPT 不一致 / 动画顺序不对 / 字号不对 | 「复刻页保真核验链」+「源 PPT 动画复现」 | 要 |
+| 白块 / 白底 / 图有白背景 | 「源 PPT 复刻的『白色块』清理」+「白底图 → 透明背景」 | 要 |
+| 排版不饱满 / 太空 / 内容挤在中间 | 「排版拟合」 | 要 |
+| 抹掉原作者 / 署名 / 首页 / 沙漏 | 「品牌化 + 构建顺序」 | 要（且必须走 `rebuild.sh`） |
+| 改引擎 / 改 `_shared/` | 「改 `_shared/` 后如何确认各讲未被改坏」 | 要（全部讲） |
+| 上线上传 / 发布 / 瘦身 | **不在这里** → `deploy-slides` skill | —— |
+
+**强顺序依赖**：涉及复刻页的改动一律走 `bash tools/rebuild.sh`（`regen → brand → build`），顺序颠倒会静默丢改动。详见「品牌化 + 构建顺序」。
+
 
 ## Overview
 
@@ -1060,9 +1078,19 @@ done
 
 ## 打磨闭环：意见队列 → deck + 逐字稿（原 `polish-slides`，2026-09-10 并入本 skill）
 
+> **这就是原来 `/polish-slides <path>` 做的事**——把 skill 名换成 `lecture-deck-pipeline` 即可，参数与语义完全不变。
+
 讲师在 `02-script/index.html` 逐页写意见 → 点「导出意见」并入 `02-script/data/feedback-history.json` → 本流程读 `status:"unsolved"` 队列 → 路由 → 全局润色 → 重建验收 → 打 `solved`。
 
-**调用**：传 `feedback-history.json` 路径（前端导出时复制到剪贴板的就是这个路径尾段）；传的是 `feedback.json`（旧习惯）时取**同目录的 history**。队列为空直接告知「无待处理意见」，**不要空跑构建**。
+**调用**（等价于旧的 `/polish-slides <path>`）：
+
+```text
+/lecture-deck-pipeline <feedback-history.json 路径>
+```
+
+自然语言同样命中（触发词已进 skill description）：**「把 feedback-history.json 里未处理的意见应用到课件」**、**「按意见改课件」**、**「run polish」**。不想打 skill 名就直接这么说 + 贴路径。
+
+**调用约定**：传 `feedback-history.json` 路径（前端导出时复制到剪贴板的就是这个路径尾段）；传的是 `feedback.json`（旧习惯）时取**同目录的 history**。队列为空直接告知「无待处理意见」，**不要空跑构建**。
 
 ### 存储契约（前端 ↔ 本流程的唯一接口）
 
