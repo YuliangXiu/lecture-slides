@@ -31,7 +31,7 @@ generates the section/s-wrap/s-page wrapper — your `html` field is the content
   whitespace stripped (`replace(/\s+/g,'')`) because <p> concatenation drops
   inter-sentence spaces.
 - Sentence-splitting hardening (2026-09-02 PM): name initials like
-  "Prof. A. B. Surname" must NOT split at "B." — rule = standalone single capital
+  "Michael J. Black" must NOT split at "J." — rule = standalone single capital
   letter + preceding word capitalized (name) → no split; preceding word
   lowercase (e.g. "part A.") → normal boundary. Guard: if the FOLLOWING word is
   a sentence-starter (Now/And/So/This/...), split anyway (covers "Part B.
@@ -158,7 +158,7 @@ slides — always re-typeset raw data with components.
 # 任意 cwd 均可，构建器自动上溯定位 _shared
 python3 _shared/build/deck_builder.py <module.py> <out_dir>
 NODE_PATH=<含 playwright 的 node_modules 所在目录> \
-  node \
+  <node 可执行文件> \
   _shared/deck-engine/check_deck.mjs <out_dir>
 ```
 check_deck.mjs reports: per-slide overflow (>1080/1920), broken media, JS errors,
@@ -192,7 +192,7 @@ missing notes, controls presence. Iterate until "ALL CLEAN".
 - EMBED mode, segPanel-open state, and INPUT/TEXTAREA focus still swallow all of
   the above (unchanged guard order in the keydown handler).
 
-## M<COS_REGION>-pins recipe (exact-fit crop)
+## Map-with-pins recipe (exact-fit crop)
 - Pin (left,top) % are relative to the map container AND assume the image fills it
   exactly. If the container aspect ≠ image aspect, object-fit shifts the geography.
 - Deterministic fix: measure the container (W×H px), then pre-crop the image to
