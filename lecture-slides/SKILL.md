@@ -13,7 +13,7 @@ agent_created: true
 为课件（HTML Lecture Slides）提供三大能力，均以 **04-magazine 杂志排版风**为唯一视觉标准：
 
 - **模块 A · 版式风格**：整套 04-magazine 期刊质感——米色纸面（`#f7f2e8`）、衬线大标题（Playfair Display + Noto Serif SC）、深红强调线（`#a5281b`）；所有框体统一为「细边 + 顶部 3px 强调线 + 12px 圆角 + 柔和投影」，嵌套结构 `:is()` 双段重置规则使只有**最外层**容器带强调线
-- **模块 B · 演讲者模式**：Keynote 式双屏（观众屏全屏 + 演讲者屏预览/文稿），postMessage 跨窗口同步（file:// 可用），双进度条以讲稿语速估算实时显示讲课节奏；单屏环境自动退化为正常放映。多屏窗口落位（观众 deck 去扩展屏、presenter/逐字稿去鼠标所在屏）见 B5 与 `references/multi-screen-routing.md`
+- **模块 B · 演讲者模式**：Keynote 式双屏（观众屏全屏 + 演讲者屏预览/文稿），postMessage 跨窗口同步（file:// 可用），双进度条以讲稿语速估算实时显示讲课节奏；单屏环境自动退化为正常放映。当前页预览框有**「还有动画吗」边框指示器**：绿 = 按 ↓ 出动画、红 = 按 ↓ 直接翻页（判据 `__deck.stepInfo().more`，见 B1）。多屏窗口落位（观众 deck 去扩展屏、presenter/逐字稿去鼠标所在屏）见 B5 与 `references/multi-screen-routing.md`
 - **模块 C · 离线本地化**：字体（VF + 按课件字符集子集化，每家族 1 个 woff2，全 deck 约 0.8MB）与媒体资源（按「页号-序号」命名收编）全部内嵌，整套文件夹拷贝到任何电脑断网 file:// 双击打开，渲染与在线版一致
 - **模块 D · 质量门禁与进阶组件**（固定舞台 deck）：媒体框宽高比审计（容器贴合媒体真实比例）、布局平衡审计（"内容叶子"法，消除内容堆顶/底部大留白）、多页递进图像素对齐（同一元素连续各页 rect 全等）、视频片段编辑器（✂ 按钮设定 start/end，localStorage 持久化按片段播放）、final_accept 全链路 E2E
 - **模块 E · 默认排版规律（Layout Doctrine）**：从 151 条真实排版反馈归纳出的**强制默认布局偏好**——媒体主角放大（≥80% 高度）、卡片等比不裁剪、砌砖无缝铺满、文字窄列让位（≤1/3 宽）、元素网格对齐咬合、中英对照体系、头像卡 80%、渐进揭示动画、稀疏页删除。**任何新建/修改课件页面时默认按此规律排版**，除非用户当次明确要求例外。
@@ -27,7 +27,7 @@ agent_created: true
 
 ### 视频素材下载（前置，涉及外部视频链接时必做）
 
-当课件页面需要引入 YouTube 或 Bilibili 视频素材时，先调用 `video-download` skill（`video-download skill 目录`）把视频下载到本地 `03-slides/media/decks/session-N/videos/`，再接入 deck（`<video data-vid>` + `video_config`）。**默认行为（用户 2026-09-06 指定）：只要用户给出 YouTube/Bilibili 链接就自动下载到本地，无需确认；只有全部方案失败才上报并保留 iframe 兜底。** 禁止直接用 YouTube/Bilibili iframe 嵌页面——破坏离线自包含（模块 C），观众断网打不开。
+当课件页面需要引入 YouTube 或 Bilibili 视频素材时，先调用 `video-download` skill（`~/.workbuddy/skills/video-download/`）把视频下载到本地 `03-slides/media/decks/session-N/videos/`，再接入 deck（`<video data-vid>` + `video_config`）。**默认行为（用户 2026-09-06 指定）：只要用户给出 YouTube/Bilibili 链接就自动下载到本地，无需确认；只有全部方案失败才上报并保留 iframe 兜底。** 禁止直接用 YouTube/Bilibili iframe 嵌页面——破坏离线自包含（模块 C），观众断网打不开。
 
 ### Step 0 — 判定模块
 
@@ -58,7 +58,7 @@ agent_created: true
 
 **A5 自动验收**：
 ```bash
-NODE_PATH=<含 playwright 的 node_modules 所在目录> \
+NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules \
   node scripts/verify_nested.mjs <页面路径或URL> [--sel "<框体选择器>"] [--shot out.png]
 ```
 断言：有框体祖先的内层全部 1px 细边；无祖先的最外层全部 3px 强调线。另核对 tokens
@@ -66,7 +66,9 @@ NODE_PATH=<含 playwright 的 node_modules 所在目录> \
 
 ### 模块 B — 演讲者模式
 
-**B1 前提检查**：deck 引擎导出 `window.__deck = { go, page(), total, notes(i) }`，翻页路径末尾触发 `window.__onPage(cur)` 回调，且预览同步支持 `goto` 消息（`__hwyqSync` 协议）。**reveal.js 引擎不原生导出 `__deck`**——按 `references/reveal-adapter.md` 加适配器。
+**B1 前提检查**：deck 引擎导出 `window.__deck = { go, page(), total, notes(i), stepInfo() }`，翻页路径末尾触发 `window.__onPage(cur)` 回调，且预览同步支持 `goto` 消息（`__hwyqSync` 协议）。**reveal.js 引擎不原生导出 `__deck`**——按 `references/reveal-adapter.md` 加适配器。
+
+> **`stepInfo()` 是「本页还有动画吗」指示器的唯一数据源**：返回 `{total, left, step, more}`，`more === (left > 0)` 即「现在按 ↓ 会不会翻页」。presenter 侧据此把当前页预览框描边画成绿（还有动画）/ 红（按 ↓ 直接翻页）。契约与三段数据链路见 `lecture-deck-pipeline/references/presenter-anim-indicator.md`；实现要求：`state` 与 `vstep` **两条消息都要带** `anim = stepInfo()`，否则「出完最后一步」不会由绿转红。
 
 **B2 接入**：
 - `assets/presenter-inject.js` → 注入放映页（`<script>` 末尾）：S 键 + `[data-act="pres"]` 按钮开窗、state/meta 上报、命令仲裁
@@ -132,7 +134,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 
 ### 模块 E — 默认排版规律（Layout Doctrine，强制默认）
 
-> 来源：`<lecture>` 课程 151 条已解决的排版反馈（2026-08~09，六轮 polish 定稿）+ 最终代码形态核验（S2.05/S2.06/S2.28/S3.06/S3.12d/S3.15/Failure Gallery）。以下规则是**用户排版审美的默认值**——生成任何新页面时直接按此排版，第一版就要符合，不逐次试探。频率最高的不满词是"太空了"；频率最高的指令是"铺满/撑满/拉满/等宽/对齐/不裁剪"。
+> 来源：`<课程目录>` 课程 151 条已解决的排版反馈（2026-08~09，六轮 polish 定稿）+ 最终代码形态核验（S2.05/S2.06/S2.28/S3.06/S3.12d/S3.15/Failure Gallery）。以下规则是**用户排版审美的默认值**——生成任何新页面时直接按此排版，第一版就要符合，不逐次试探。频率最高的不满词是"太空了"；频率最高的指令是"铺满/撑满/拉满/等宽/对齐/不裁剪"。
 
 **E1 媒体主角原则（图/视频优先于文字）**
 - 页面只要含媒体，媒体就是视觉主体。目标高度 ≥80% 可用 body 高度（多图 90–100%），横版大图直接 100% height。
@@ -225,7 +227,7 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **放映服务版本提示（postJSON）**：放映服务是旧 Python 进程时新路由回 404 HTML，`res.json()` 解析报晦涩错误——前端须对非 JSON 响应做「请重新双击 play.command」提示。
 - **看片台回归套件**：`bash _shared/viewer/tests/run_all.sh [repo_root]` 自动遍历 `lecture-*`，逐讲串行跑 4 套件——基础冒烟 / 看片台 E2E / 拖拽冒烟 / 意见落盘去重（端口 `BASE+0..3`）。**落盘套件在 `os.tmpdir()` 临时副本上跑，绝不碰真实 `feedback.json`**。
 
-> **🚧 边界**：本节描述**能力与设计**。这些工具的**脚手架专属实战坑**——`let board` 的 TDZ、`aspect-ratio` + 百分比宽在 CSS Grid 崩成 2px、缩略图指纹必须含 `RENDER_VER`、拍摄重影（`CAPTURE_CSS`）、KaTeX 重复注入、看片台的 dirty 守卫与垃圾桶语义、回归套件的完整清单与**已知假红**——全部记在 **`lecture-deck-pipeline`** skill 的「看片台 / 缩略图 / 隐藏页」相关章节，不在本 skill 重复。
+> **🚧 边界**：本节描述**能力与设计**。这些工具的**脚手架专属实战坑**——`let board` 的 TDZ、`aspect-ratio` + 百分比宽在 CSS Grid 崩成 2px、缩略图指纹必须含 `RENDER_VER`、拍摄重影（`CAPTURE_CSS`）、KaTeX 重复注入、看片台的 dirty 守卫与垃圾桶语义、回归套件的完整清单与**已知假红**——全部记在 **`lecture-deck-pipeline`** skill 的 `references/thumbnail-wall.md` 与 `references/hidden-slides.md`，不在本 skill 重复。
 
 ## Pitfalls
 
@@ -239,10 +241,10 @@ E2E 脚本 `scripts/test_segeditor.mjs`（14 项）。
 - **预览 iframe 首帧带 `#/N` hash 直达当前页**，避免闪第 1 页
 - **悬停显现的按钮（`opacity:0; pointer-events:none`）不可交互**：Playwright hit-target 检测在鼠标移动前就失败，触屏也不可用——用常驻低透明度（.18）+ hover 加深
 - **本地 HTTP server 必须 run_in_background 持久启动**：普通命令里 `cmd &` 会随 shell 退出被回收，下一条命令连接被拒
-- **云同步目录 文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
+- **OneDrive 文件首次 HTTP 访问可能 404（按需水合延迟）**：重试即可，勿误判文件缺失
 - **模块 E 是默认值不是可选项**：新建页面时直接按 Layout Doctrine 排版，不要先做"常规布局"再等用户反馈改——用户对此类反复调整的成本已明确表达过不满。唯一例外：用户当次指令明确要求不同做法
 - **"填满"与"不裁剪"冲突时的优先级**：先保 `object-fit:contain` 完整画幅（E2），再通过补图/补媒体把空间填满（E5），绝不靠 crop 或拉伸变形来凑满
-- **同文件多处修改严禁并行 Edit**（云同步目录 目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
+- **同文件多处修改严禁并行 Edit**（OneDrive 目录双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜，前面的编辑静默丢失。同文件多处改必须串行；改完 diff 文件实际状态再下结论，别只信「编辑已成功返回」
 - **E2E 断言查视觉值（getBoundingClientRect）而非仅内联值**：flex-basis / transform 等会让内联 `style.*` 落下但视觉不变，只断言内联值会假通过
 - **getBoundingClientRect 返回 transform 后视觉盒**：stage scale 缩小不改变元素中心；计算「两控件是否重叠/相距多远」要用视觉值，别用布局值
 - **「某按钮没显示」先 dump DOM 判断是否真未渲染**：常见根因是坐标/层级重叠（后被渲染的兄弟盖住它），不是条件判断/样式/事件绑定问题

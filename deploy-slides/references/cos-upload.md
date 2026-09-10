@@ -8,13 +8,13 @@
 |---|---|
 | 存储桶 | `<COS_BUCKET>-<AppID>`（AppID 已含，勿再加 `-<AppID>` 后缀） |
 | 区域 | `<COS_REGION>` |
-| COS 前缀 | `/<lecture>/media/decks/` |
+| COS 前缀 | `/lecture-01/media/decks/` |
 | 本地源 | `<课程根>/04-deploy/media/decks/` |
 | 基础 URL | `https://<COS_BUCKET>-<AppID>.cos.<COS_REGION>.myqcloud.com` |
 
-路径映射：本地 `04-deploy/media/decks/session-N/videos/x.mp4` → COS Key `<lecture>/media/decks/session-N/videos/x.mp4`。
+路径映射：本地 `04-deploy/media/decks/session-N/videos/x.mp4` → COS Key `lecture-01/media/decks/session-N/videos/x.mp4`。
 
-学生版 HTML（`build_publish.py` 产物）把 `../media/decks/` 替换为 `https://<COS_BUCKET>-<AppID>.cos.<COS_REGION>.myqcloud.com/<lecture>/media/decks/`，所以 COS 上的 Key 必须与本地相对路径**严格一致**。
+学生版 HTML（`build_publish.py` 产物）把 `../media/decks/` 替换为 `https://<COS_BUCKET>-<AppID>.cos.<COS_REGION>.myqcloud.com/lecture-01/media/decks/`，所以 COS 上的 Key 必须与本地相对路径**严格一致**。
 
 ## 2. 首选工具：rclone（本机已配置并验证）
 
@@ -28,7 +28,7 @@
 # 幂等同步（重试安全：已存在且 size 一致的对象跳过）
 # 整目录全量 copy，排除 .DS_Store 与二压备份 .orig.mp4
 /opt/homebrew/bin/rclone copy <课程根>/04-deploy/media/decks \
-    cos:<COS_BUCKET>-<AppID>/<lecture>/media/decks --transfers 8 \
+    cos:<COS_BUCKET>-<AppID>/lecture-01/media/decks --transfers 8 \
     --exclude '.DS_Store' --exclude '*.orig.mp4'
 ```
 
@@ -37,7 +37,7 @@
 - `--exclude '.DS_Store' --exclude '*.orig.mp4'`：前者避免 macOS 元数据文件上线；后者避免二压备份原片（可能很大）被传上去。若已误传，用 `rclone delete` 定向清理。
 - 配置变更：`rclone config`（编辑 remote），改完 `rclone lsd` 验证。
 - `copy` 是「仅新增/更新目标缺失项」，不会删除目标多余对象（与 `sync` 不同，更安全）。
-- 核对：`/opt/homebrew/bin/rclone lsf cos:<COS_BUCKET>-<AppID>/<lecture>/media/decks --include '*.webp' | wc -l` 与本地 webp 数对比，确认新格式已全量就位。
+- 核对：`/opt/homebrew/bin/rclone lsf cos:<COS_BUCKET>-<AppID>/lecture-01/media/decks --include '*.webp' | wc -l` 与本地 webp 数对比，确认新格式已全量就位。
 
 ### 2.1 若 rclone 未配置（新机器 / 换机）
 
@@ -57,13 +57,13 @@ rclone config   # 交互式新建 remote：type=s3, provider=TencentCOS, endpoin
 
 ```bash
 # 装进隔离 venv（勿污染系统环境）
-<skill 安装目录>/binaries/python/versions/3.13.12/bin/python3 -m venv <venv>
-<venv>/bin/pip install coscmd
+<python3> -m venv ~/.workbuddy/binaries/python/envs/default
+~/.workbuddy/binaries/python/envs/default/bin/pip install coscmd
 # 或系统级（简单场景）
 pip3 install coscmd
 ```
 
-验证：`coscmd --version`（或 `<venv>/bin/coscmd --version`）。
+验证：`coscmd --version`（或 `~/.workbuddy/binaries/python/envs/default/bin/coscmd --version`）。
 
 ### 3.2 配置（密钥写入 `~/.cos.conf`）
 
@@ -78,20 +78,20 @@ coscmd config -a <SecretId> -s <SecretKey> -b <COS_BUCKET>-<AppID> -r <COS_REGIO
 ### 3.3 幂等上传
 
 ```bash
-coscmd upload -r --skipmd5 <课程根>/04-deploy/media/decks/ /<lecture>/media/decks/
+coscmd upload -r --skipmd5 <课程根>/04-deploy/media/decks/ /lecture-01/media/decks/
 ```
 
 - `-r`：递归目录；`--skipmd5`：已存在且 size+md5 一致的对象跳过（**重试安全**）。
 - 与 rclone 一样**整目录全量上传**（补齐 webp 等新格式）；coscmd 无内置 exclude，若本地混入 `.DS_Store`/`.orig.mp4` 需先清本地再传或用 `coscmd delete` 事后清理。
 - 目标前缀**必须带前导 `/`**（相对桶根）。
-- 校验：上传后 `coscmd list -r /<lecture>/media/decks/ | wc -l` 与本地文件数一致；抽查 `coscmd info /<lecture>/media/decks/<某文件>` 返回 200。
+- 校验：上传后 `coscmd list -r /lecture-01/media/decks/ | wc -l` 与本地文件数一致；抽查 `coscmd info /lecture-01/media/decks/<某文件>` 返回 200。
 
 ### 3.4 常用维护命令
 
 ```bash
-coscmd list -r /<lecture>/media/decks/        # 列出前缀下所有对象
-coscmd info /<lecture>/media/decks/<key>      # 查单个对象头
-coscmd delete -r -f /<lecture>/media/decks/xxx  # 删（慎用，勿带 -f 盲删根前缀）
+coscmd list -r /lecture-01/media/decks/        # 列出前缀下所有对象
+coscmd info /lecture-01/media/decks/<key>      # 查单个对象头
+coscmd delete -r -f /lecture-01/media/decks/xxx  # 删（慎用，勿带 -f 盲删根前缀）
 ```
 
 ## 4. 备选工具 B：Python SDK（qcloud_cos）
@@ -99,9 +99,9 @@ coscmd delete -r -f /<lecture>/media/decks/xxx  # 删（慎用，勿带 -f 盲�
 coscmd 不可用时用 SDK 直连。`deploy-slides/scripts/cos_sync.py` 是一个幂等上传封装（按 size + 自定义元数据 md5 判重，重跑安全）。
 
 ```bash
-<venv>/bin/pip install cos-python-sdk-v5
-COS_SECRET_ID=xxx COS_SECRET_KEY=yyy python3 <本 skill 目录>/scripts/cos_sync.py \
-    --src <课程根>/04-deploy/media/decks --prefix /<lecture>/media/decks --apply
+~/.workbuddy/binaries/python/envs/default/bin/pip install cos-python-sdk-v5
+COS_SECRET_ID=xxx COS_SECRET_KEY=yyy python3 ~/.workbuddy/skills/deploy-slides/scripts/cos_sync.py \
+    --src <课程根>/04-deploy/media/decks --prefix /lecture-01/media/decks --apply
 ```
 
 ## 5. 密钥管理铁律

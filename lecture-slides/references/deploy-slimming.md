@@ -1,11 +1,11 @@
 # 部署发布与媒体瘦身（04-deploy 双轨）
 
-> 模块 G 完整设计。来源：`<lecture>` 课程 2026-09-07 落地的一套部署/裁剪/瘦身/发布管线。核心思想一句话：**源永不动，裁剪与瘦身只在部署镜像上发生，登记表是唯一真源。**
+> 模块 G 完整设计。来源：`<课程目录>` 课程 2026-09-07 落地的一套部署/裁剪/瘦身/发布管线。核心思想一句话：**源永不动，裁剪与瘦身只在部署镜像上发生，登记表是唯一真源。**
 
 ## 1. 双轨架构与两条铁律
 
 ```
-<lecture>/          ← 课程根（服务根）
+<课程目录>/          ← 课程根（服务根）
 ├─ 03-slides/                     权威完整源（index.html 引用 ../media/decks/…）
 │  ├─ session-N/index.html        ← 永不修改（含 VIDEO_CONFIG 数值）
 │  └─ media/
@@ -116,7 +116,7 @@
 - deck 讲稿 fetch `../../02-script/data/sessionN.json`，从 `/03-slides/session-N/` 或 `/04-deploy/session-N/` 出发向上两级都落到课程根。所以**必须由课程根 serve**，不要把 04-deploy 单独当 server 根（否则 notes 404）。
 - 02-script 逐字稿对照页的内嵌 iframe 预览指向 03-slides 权威源（它是编辑工作台，不是放映物）。
 - 演讲者视图已移除（2026-09-07）：04-deploy 的 presenter.html 及 deck 内 presenter 入口均删除。**注意**：03-slides 侧保留 presenter.html（放映走 03-slides 后，演讲者视图仍可用）。
-- 两份 `play.command`（<lecture> / <lecture>）须保持同一形态，仅 session 数量不同；改一处记得 diff 另一处。
+- 两份 `play.command`（lecture-01 / lecture-02）须保持同一形态，仅 session 数量不同；改一处记得 diff 另一处。
 
 ## 5. 重建镜像后重新应用（procedure）
 
@@ -143,6 +143,6 @@ python3 tools/build_publish.py --root <课程根> --repo <主页repo>
 - **改完必须做 JS 语法校验**：把 `const VIDEO_CONFIG = { … };` 声明块抽出来过 `node --check`。只 grep 目标数字会漏掉双括号这类结构错误。
 - **路径拼接别用 `lstrip("./")`**：deck HTML 里 media src 含 `../media/decks/…`，lstrip 会吞掉 `../` 导致路径全错。以 HTML 所在目录为基准 `os.path.join(html_dir, src)` 解析。
 - **ffmpeg/ffprobe/gif2webp/cwebp 前置**：脚本内置候选路径（`/opt/homebrew/bin`、`/usr/local/bin`、PATH），不可用时 FATAL 退出。本机 brew 前缀是 `/opt/homebrew/bin`。
-- **同文件多处修改严禁并行 Edit**（云同步目录 双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜。同文件多处改必须串行。
+- **同文件多处修改严禁并行 Edit**（OneDrive 双写竞争）：多个并行 Edit 各持旧快照整文件回写、后完成者胜。同文件多处改必须串行。
 - **重压反而变大的候选不要反复试错**：完整编码一遍再回退很费时，且触发累计删除拦截。实测变大的记进 `OVERRIDE_SKIP` 清单让脚本幂等跳过。
 - **瘦身/裁剪产物只落 04-deploy**：任何 `.slim.mp4`、`.trimming.mp4`、`.orig.mp4`、`.webp` 都不该出现在 03-slides。03-slides 是回退的干净源。

@@ -41,15 +41,25 @@ lecture-slides/                  # skill 1: the design system
     audit_layout.mjs             # layout-balance audit
     test_segeditor.mjs           # segment editor E2E
 lecture-deck-pipeline/           # skill 2: build / replicate / verify / polish
-  SKILL.md                       # entry: directory contract, build/verify loop, replication,
-                                 #        white-block cleanup, stage fitting, rebranding,
-                                 #        hidden slides, feedback queue, pitfalls
+  SKILL.md                       # entry: boundaries, intent router, directory contract,
+                                 #        new-lecture workflow, standing constraints, pitfalls
   assets/
     play.command                 # macOS launcher (HTTP server + browser windows)
   scripts/
     export_feedback.mjs          # optional localStorage export helper
-  references/
+  references/                    # deep how-to, read on demand (SKILL.md routes you here)
     AUTHORING.md                 # engine authoring rules: layout doctrine, media, notes
+    replica-reproduce.md         # replication: animation replay, white-block cleanup,
+                                 #   S1/S2 vs S4/S5 differences, white->transparent
+    replica-verify.md            # replication: fidelity verification chain, stage fitting
+    branding-build.md            # rebranding + rebuild.sh ordering
+    hidden-slides.md             # hidden-slide chain
+    thumbnail-wall.md            # thumbnail wall + separator titles
+    presenter-anim-indicator.md  # presenter "more animation below?" green/red border
+    polish.md                    # feedback queue + speaker-script conversational polish
+    deck-editing.md              # inserting a source-PPT page, drag reordering
+    acceptance.md                # asset dedupe, two-layer acceptance, engine alignment
+    lessons.md                   # dated engineering lessons
 deploy-slides/                   # skill 3: end-to-end deploy pipeline
   SKILL.md                       # entry: I/O contract, stages, failure/retry
   README.md                      # directory map
@@ -85,18 +95,27 @@ The skill triggers on requests like "make lecture slides", "unify card styles", 
 
 ## Skill 2 — `lecture-deck-pipeline` (building, replicating, verifying, polishing)
 
-The orchestration skill for a whole lecture. It owns:
+The orchestration skill for a whole lecture. **`SKILL.md` is deliberately thin** — it holds the boundaries, the intent router, the directory contract, the new-lecture workflow, and the standing constraints. All deep how-to lives in `references/` and is read on demand:
 
-- **The directory contract** — authoritative deck source vs. deploy mirror, and the `_shared/` engine + builder layer shared across lectures. Content lives in Python modules (`tools/content/session{N}_content.py`); the speaker script is a single JSON source of truth; the deck is a fixed-stage deck (not reveal.js) rendered offline. `assets/play.command` starts a local HTTP server and opens the front end plus the deck windows (multi-screen aware). `references/AUTHORING.md` is the engine's authoring guide.
-- **Replication of an external deck** — two replica pipelines (16:9 and 4:3 source canvases), OOXML inheritance chains (font size, bullets, line spacing), animation reproduction (entry/exit/motion-path with trigger order), and a **five-layer fidelity verification chain** (generator consistency → element geometry → animation steps → font size → engine-level check) where every layer has an independent ground truth.
-- **White-block / white-background cleanup** — source decks hide "cover rectangles" on a white canvas which become visible once the canvas turns cream; images and videos carry white backgrounds too. The skill documents the element-level and pixel-level detection thresholds (and why automated chart-vs-render classification fails), edge-connected alpha keying, and the `mix-blend-mode: darken` trick for white-backed videos.
-- **Stage fitting** — replicating a source deck whose page size does not match the target ratio leaves content crammed into the middle 60–70%. The fix is a per-page 2D fit on the *content bounding box*, not a fixed scale factor.
-- **Rebranding** — cover page credits, an hourglass countdown on each session's closing page, and redacting the original authors' names from the speaker script and citations, with a fixed step order (`regen → brand → build`) because running them out of order silently loses edits.
-- **Hidden slides** — the source `.pptx` `show="0"` flag propagates through five layers; the rule implementation is single-sourced and shared across lectures.
-- **The feedback loop** (formerly the separate `polish-slides` skill) — read `status: "unsolved"` records from the project's feedback history, enhance each comment through the `prompt-optimizer` skill, route it to the deck or the bilingual script, rebuild, verify, and close the resolved items.
-- **Two-layer acceptance** — a hash layer (generator behaviour unchanged) plus a pixel layer (rendered result unchanged), because a single layer cannot distinguish "optimised" from "broken".
+| Reference | Covers |
+|---|---|
+| `AUTHORING.md` | Engine authoring rules: layout doctrine, media budgets, notes |
+| `replica-reproduce.md` | Replication: animation replay, white-block cleanup, S1/S2 vs S4/S5 canvas differences, white→transparent |
+| `replica-verify.md` | Fidelity verification chain + stage fitting |
+| `branding-build.md` | Rebranding, hourglass, and the `regen → brand → build` order |
+| `hidden-slides.md` | Hidden-slide chain (source `show="0"` through five layers) |
+| `thumbnail-wall.md` | Thumbnail wall, `#index` element annotation, separator titles |
+| `presenter-anim-indicator.md` | Presenter "more animation below?" green/red border |
+| `polish.md` | Feedback queue + speaker-script conversational polish |
+| `deck-editing.md` | Inserting a source-PPT page, drag reordering |
+| `acceptance.md` | Asset dedupe, two-layer acceptance, engine version alignment |
+| `lessons.md` | Dated engineering lessons |
 
-> **Absorbed skill.** `polish-slides` was merged into this skill (2026-09-10). Its queue contract, comment routing, transcription rules and status writes now live in the "打磨闭环" section of `SKILL.md` — that skill no longer exists.
+Highlights it owns: **the directory contract**; **replication of an external deck** via two replica pipelines (16:9 and 4:3 source canvases) with OOXML inheritance chains and a five-layer fidelity chain where every layer has an independent ground truth; **white-block cleanup** (element-level and pixel-level thresholds, edge-connected alpha keying, `mix-blend-mode: darken` for white-backed videos); **stage fitting** on the content bounding box; **rebranding**; **hidden slides**; **the feedback loop**; and **two-layer acceptance** (hash + pixel), because a single layer cannot distinguish "optimised" from "broken".
+
+> **Absorbed skill.** `polish-slides` was merged into this skill (2026-09-10). Its queue contract, comment routing, transcription rules and status writes now live in `references/polish.md` — that skill no longer exists.
+>
+> **Deliberately *not* absorbed.** `deploy-slides` and `lecture-slides` stay independent. The test is not "does it also talk about slides" but **lifecycle and reusability**: `polish-slides` shared this skill's lifecycle, files and triggers, so merging removed a cross-skill hop; `deploy-slides` is a *different stage* (mirror → slim → COS → homepage) and ships as a course-agnostic template whose instance values are all `<...>` placeholders. Merging it would only make this skill longer and destroy its portability.
 
 ### Usage
 
@@ -104,7 +123,7 @@ The orchestration skill for a whole lecture. It owns:
 cp -R lecture-deck-pipeline ~/.workbuddy/skills/lecture-deck-pipeline   # e.g. for WorkBuddy
 ```
 
-The skill triggers on requests like "make the course slides", "build the deck", "new lecture", "notes not showing", "play.command", "deck_builder", "white blocks", "layout not filling the stage", "redact the original author", "apply the review comments", "insert a page".
+The skill triggers on requests like "make the course slides", "build the deck", "new lecture", "notes not showing", "play.command", "deck_builder", "white blocks", "layout not filling the stage", "redact the original author", "apply the review comments", "insert a page", "polish the speaker script".
 
 ## Skill 3 — `deploy-slides` (deploying)
 
@@ -131,7 +150,8 @@ The skill triggers on requests like "deploy the course slides", "publish to the 
 
 - All internal paths are portable: scripts resolve their own interpreter (`sys.executable`, overridable with `PYTHON_BIN`) and never reference a specific user's home or sync directory. `deploy-slides` instance values are placeholders (see above), and its scripts take bucket/region/prefix from the environment (`COS_BUCKET` / `COS_REGION` / `COS_PREFIX`).
 - Requires Playwright for the acceptance scripts and `fonttools` + `brotli` for font subsetting (installed into whichever Python runs the script). Deploying additionally needs `ffmpeg`/`ffprobe`, `gif2webp`/`cwebp`, and one COS upload tool (rclone, coscmd, or the qcloud_cos SDK).
-- **Live vs. portable copies.** The maintainer's working copy of these skills is kept alongside the course project and contains real paths and instance values; the copies in this repository are the scrubbed, portable versions. The scrub is one-way: portable rewrites are never written back to the live copy.
+- **Live vs. portable copies.** The maintainer's working copy of these skills lives in `~/.workbuddy/skills/` and contains real paths and instance values; the copies in this repository are the scrubbed, portable versions. The scrub is one-way: portable rewrites are never written back to the live copy. The sync+scrub step is a private script (it necessarily contains the real→placeholder table), so it is deliberately **not** in this repo.
+- **Layering rule for `lecture-deck-pipeline`.** Keep `SKILL.md` thin — boundaries, intent router, standing constraints. Anything you would only need *while doing one specific job* belongs in `references/`, with a router row pointing at it. The skill previously carried 27 top-level sections in a single 1,386-line file; that is what the router exists to prevent. If it grows back past a few hundred lines, split again rather than appending.
 
 ## Verified on
 

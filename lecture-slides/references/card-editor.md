@@ -84,5 +84,5 @@
 - **「裁」按钮不显示的根因是坐标重叠**（两按钮同 left/top，「换」后渲染覆盖「裁」），不是未渲染——先 dump DOM 里按钮是否俱在。
 - **getBoundingClientRect 返回 transform 后视觉盒**：scale 缩小不改变布局中心，同卡两排控件用视觉 minSide 算距离。
 - **Playwright 定位 iframe 按 URL**（`fr.url().indexOf('session-1') >= 0`）而非 locator try/catch——locator 不抛错，try/catch 探测会误匹配首帧。
-- **同文件多处修改严禁并行 Edit**：云同步目录 目录双写竞争（各持旧快照整文件回写，后完成者胜）导致编辑静默丢失；同文件多处改必须串行，改完 diff 实际状态再下结论。
+- **同文件多处修改严禁并行 Edit**：OneDrive 目录双写竞争（各持旧快照整文件回写，后完成者胜）导致编辑静默丢失；同文件多处改必须串行，改完 diff 实际状态再下结论。
 - **测试 HTTP server 必须支持 Range 请求**，否则视频 seek 挂起。

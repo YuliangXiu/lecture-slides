@@ -35,7 +35,7 @@ Playwright **sid 寻址**截图 + manifest cache-bust。sid 寻址保证重排 /
   - `missing`：只补 manifest 无记录或 jpg 缺失的页。
   - `since-solved`：`missing` ∪ {`status=solved` 且 `resolved_at > 该页 manifest ts` 的 sid}——增量重拍，把全量 1–2 分钟降到秒级。
 - **边界全覆盖**：history 不存在 / records 非法 → 退化 missing 并返回 warn；solved 缺 `resolved_at` → 保守重拍该页；manifest 缺失 → 自然全量（首次运行）；jpg 缺失 → 必拍。
-- **NODE_PATH 坑**：裸跑 cjs 报 `Cannot find module 'playwright'`；三处子进程调用点（`play.command` 的 `_reshoot_thumbs` / `_reshoot_bg`、`reorder_deck` 的 `reshoot_thumbs`）必须注入 `NODE_PATH=<含 playwright 的 node_modules 所在目录>`。
+- **NODE_PATH 坑**：裸跑 cjs 报 `Cannot find module 'playwright'`；三处子进程调用点（`play.command` 的 `_reshoot_thumbs` / `_reshoot_bg`、`reorder_deck` 的 `reshoot_thumbs`）必须注入 `NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules`。
 - 返回值 `{mode, needed, skipped, warn?}`；前端 `boardRefresh` 走 `since-solved`，`needed=0` 提示「已是最新」，否则「已更新 N 页（其余 M 页未变更）」。
 
 ## 4. 放映服务旧进程版本提示（postJSON）

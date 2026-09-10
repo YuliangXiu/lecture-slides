@@ -66,9 +66,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent  # skill 目录
 def main() -> None:
     # 敏感 token 黑名单。按需加长；覆盖本机路径/品牌名/实例值/密钥样式。
     FORBID = [
-        "<本机绝对路径前缀>", "<云同步产品名>", "<机构名>", "<课程名>",
-        "<作者名>", "<COS 桶名>", "<COS 区域>", "<课程 slug>", "<课程目录名>",
-        "<邮箱域名>", "sk-", "AKIA", "PRIVATE KEY",
+        "/Users/", "OneDrive", "Westlake", "西 湖", "西湖", "<课程名>",
+        "<作者名>", "<作者名>", "<COS_BUCKET>", "<AppID>", "<COS_REGION>",
+        "<课程slug>", "lecture-01", "lecture-02",
+        "<邮箱域名>", "sk-", "AKIA", "PRIVATE KEY", "<作者名>.github",
     ]
 
     # (文件, [(old, new), ...], tag) —— 精确替换，每个 old 恰 1 次
@@ -80,7 +81,7 @@ def main() -> None:
     # 默认跑本脚本所在目录下的临时清单。实际任务中按需填充 sub1_jobs/subN_jobs。
     # 示例（去注释启用）：
     # sub1_jobs.append((REPO_ROOT / "SKILL.md", [
-    #     ("课程根 云同步目录 绝对路径", "<课程根>"),
+    #     ("课程根 OneDrive 绝对路径", "<课程根>"),
     # ], "example"))
     # subN_jobs.append((REPO_ROOT / "SKILL.md", [
     #     ("project-name", "<课程slug>"),

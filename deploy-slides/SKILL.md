@@ -28,10 +28,10 @@ agent_created: true
 
 | 输入项 | 默认位置 / 说明 | 角色 |
 |---|---|---|
-| 课程根 | `<课程根>/` | 服务根，含 03-slides / 02-script / 04-deploy |
+| 课程根 | `<课程根>/<课程目录>/` | 服务根，含 03-slides / 02-script / 04-deploy |
 | 权威源 | `<课程根>/03-slides/`（含 `media/trims.json` 真源） | 永不改动的完整源 |
 | 部署镜像 | `<课程根>/04-deploy/` | 唯一可裁剪、可瘦身、可发布处 |
-| 主页 repo | `<主页repo>/` | 学生版 HTML 的 git 落点 |
+| 主页 repo | `~/Code/<主页repo>/` | 学生版 HTML 的 git 落点 |
 | 密钥 | `~/.rclone.conf` 的 `cos` remote（provider=TencentCOS，权限 600；备选 coscmd 的 `~/.cos.conf` / 环境变量） | COS 上传凭证（rclone 已配好） |
 
 ### 输出（部署完成后产生）
@@ -41,7 +41,7 @@ agent_created: true
 | 裁剪后视频 | `<课程根>/04-deploy/media/decks/session-N/videos/` | `ffmpeg` CRF24 产物 + 已改写 VIDEO_CONFIG |
 | WebP 图片 | 同上，`.gif/.png` 旁新增 `.webp` | 原图保留，可回退 |
 | 二压瘦身视频 | 同上，`.slim.mp4` 覆盖原片 + `.orig.mp4` 备份 | 仅未裁剪高码率原片 |
-| COS 媒体 | `cos://<COS_BUCKET>-<AppID>/<lecture>/media/decks/` | 学生版引用的绝对 URL 指向这里 |
+| COS 媒体 | `cos://<COS_BUCKET>-<AppID>/lecture-01/media/decks/` | 学生版引用的绝对 URL 指向这里 |
 | 学生版 HTML | `<主页repo>/teaching/<课程slug>/{session-1,session-2,session-3}/index.html` + `data/` `fonts/` | 已改 COS 绝对 URL、禁用演讲者/✂ |
 
 **成功后用户可见结果**：主页 repo `teaching/<课程slug>/` 的提交，学生版链接可公开访问且媒体从 COS 加载。
@@ -58,7 +58,7 @@ agent_created: true
 
 ### 【静默 404 坑】COS 路径段不是目录名
 
-`course_root.course_slug()` **只取 `lecture-NN` 前缀**：目录名是 `<lecture>` / `<lecture>`，而 **COS 上实际的路径段是 `/<lecture>/`**。直接拿整个目录名拼前缀会让 L01 的学生版从 `/<lecture>/media/decks/…` 变成 `/<lecture>/media/decks/…`——**线下看一切正常、线上全部 404**，属最危险的那类静默回归（发布物本身没变，只有引用路径变了）。COS 历史布局与目录名不一致时用 `build_publish.py --cos-slug <段>` 显式覆盖。
+`course_root.course_slug()` **只取 `lecture-NN` 前缀**：目录名是 `<课程目录>` / `<课程目录>`，而 **COS 上实际的路径段是 `/lecture-01/`**。直接拿整个目录名拼前缀会让 L01 的学生版从 `/lecture-01/media/decks/…` 变成 `/<课程目录>/media/decks/…`——**线下看一切正常、线上全部 404**，属最危险的那类静默回归（发布物本身没变，只有引用路径变了）。COS 历史布局与目录名不一致时用 `build_publish.py --cos-slug <段>` 显式覆盖。
 
 ### 媒体处理工具（本机已装，brew 前缀 `/opt/homebrew/bin`）
 
@@ -82,7 +82,7 @@ agent_created: true
 |---|---|---|
 | 存储桶 | `<COS_BUCKET>-<AppID>` | AppID 已含 |
 | 区域 | `<COS_REGION>` | |
-| 前缀 | `<lecture>/media/decks/` | 与 `build_publish.py` 的 `COS_PREFIX` 一致 |
+| 前缀 | `lecture-01/media/decks/` | 与 `build_publish.py` 的 `COS_PREFIX` 一致 |
 | 基础 URL | `https://<COS_BUCKET>-<AppID>.cos.<COS_REGION>.myqcloud.com` | 学生版 HTML 引用此域名 |
 | 密钥 | `~/.rclone.conf` 的 `cos` remote | 已配置（权限 600）；coscmd 走 `~/.cos.conf` 或环境变量 `COS_SECRET_ID`/`COS_SECRET_KEY`（均 git 忽略，勿入库） |
 
@@ -91,7 +91,7 @@ agent_created: true
 ### 主页发布工具
 
 - `git`（主页 repo 内），`python3`（跑 `<课程目录>/_shared/tools/deploy/build_publish.py`）。
-- 推送前按用户默认前置做 **PII 审计**：`teaching/<课程slug>/` 产物里不应残留 `<skill 安装目录>/`、`<本机用户目录>/`、课程绝对路径、密钥。
+- 推送前按用户默认前置做 **PII 审计**：`teaching/<课程slug>/` 产物里不应残留 `~/.workbuddy/`、`/Users/<user>/`、课程绝对路径、密钥。
 
 ## 执行步骤（七阶段管线）
 
@@ -113,7 +113,7 @@ agent_created: true
 
 3. 归档前 grep 判定「是否被引用」：`play.command` / `index.html` / `build.py` / `deck_builder.py` 等运行时/管线读取的文件**不归档**。active 数据文件（`session{N}.json`、`deckmeta.js`、`feedback*.json`、`slide-edits.json`、`merge-map.json` 等）必须保留原位。
 
-4. 归档目录统一命名 `_archive/`，附 `README.md` 记录清单与理由；纯垃圾（`.DS_Store`/`__pycache__`/`.pyc`）直接删除（自动再生；云同步目录/Finder 会重建 `.DS_Store` 属正常）。
+4. 归档目录统一命名 `_archive/`，附 `README.md` 记录清单与理由；纯垃圾（`.DS_Store`/`__pycache__`/`.pyc`）直接删除（自动再生；OneDrive/Finder 会重建 `.DS_Store` 属正常）。
 
 5. 清理后自检：active 数据文件逐一在位、引用路径有效，`play.command` 放映链路不受影响。
 
@@ -123,7 +123,7 @@ agent_created: true
 # 媒体工具齐不齐
 which ffmpeg ffprobe gif2webp cwebp
 # COS 工具与密钥齐不齐（本 skill 自带检查脚本）
-python3 <本 skill 目录>/scripts/check_cos_env.py
+python3 ~/.workbuddy/skills/deploy-slides/scripts/check_cos_env.py
 ```
 
 `check_cos_env.py` 输出三态：READY（rclone 或 coscmd 之一 + 密钥齐）、MISSING_TOOL（两者都缺，给出安装命令）、MISSING_KEY（有工具无密钥）。不是 READY 就**停在 Stage 0**，别往下跑（见异常处理）。
@@ -166,7 +166,7 @@ python3 ../_shared/tools/deploy/slim_videos.py --apply  # 未裁剪高码率原�
 
 ```bash
 /opt/homebrew/bin/rclone copy <课程根>/04-deploy/media/decks \
-    cos:<COS_BUCKET>-<AppID>/<lecture>/media/decks --transfers 8 \
+    cos:<COS_BUCKET>-<AppID>/lecture-01/media/decks --transfers 8 \
     --exclude '.DS_Store' --exclude '*.orig.mp4'
 ```
 
@@ -174,7 +174,7 @@ python3 ../_shared/tools/deploy/slim_videos.py --apply  # 未裁剪高码率原�
 
 > **必须整目录全量 `copy`，不要只传「本次改动的几个视频/图片」。**
 > 实战教训（2026-09-07）：slim_images 早已把 04-deploy 的 HTML 图片引用改写成 `.webp`，但历史上传只覆盖过视频与旧 `.png/.jpg`，**89 个 `.webp` 从未进 COS**——学生版图片会 404。整目录 `rclone copy` 天然补齐所有新格式（`.webp`、替换后的同名视频），重跑安全。
-> 排除 `.DS_Store` 与 `*.orig.mp4`（二压备份，不该上线）。`cos` remote 见 `references/cos-upload.md`；coscmd 等价命令 `coscmd upload -r --skipmd5 ... /<lecture>/media/decks/`。
+> 排除 `.DS_Store` 与 `*.orig.mp4`（二压备份，不该上线）。`cos` remote 见 `references/cos-upload.md`；coscmd 等价命令 `coscmd upload -r --skipmd5 ... /lecture-01/media/decks/`。
 
 ### Stage 6 — 生成学生版并发布主页
 
@@ -188,7 +188,7 @@ python3 <课程目录>/_shared/tools/deploy/build_publish.py \
 产物落到 `teaching/<课程slug>/`。然后：
 
 ```bash
-cd ~/Code/<主页域名>
+cd ~/Code/<主页repo>
 git status            # 确认只有 teaching/<课程slug>/ 相关改动（PII 审计）
 git add teaching/<课程slug>/
 git commit -m "..."   # 合并同类项：本次发布归一个 commit
@@ -212,7 +212,7 @@ curl -s --max-time 25 "https://<主页域名>/teaching/<课程slug>/session-1/in
 
 # ③ 关键媒体对象（新替换的视频 / 新传的 webp）HEAD 可达，视频应返回 video/mp4
 curl -s -o /dev/null -w "%{http_code} %{content_type}\n" --max-time 20 -I \
-  "https://<COS_BUCKET>-<AppID>.cos.<COS_REGION>.myqcloud.com/<lecture>/media/decks/session-1/videos/<某视频>.mp4"
+  "https://<COS_BUCKET>-<AppID>.cos.<COS_REGION>.myqcloud.com/lecture-01/media/decks/session-1/videos/<某视频>.mp4"
 
 # ④ 抽查全部被引用 COS URL 均 200（可选全量）：从线上 index.html 提取 URL 逐一 HEAD
 curl -s --max-time 25 "https://<主页域名>/teaching/<课程slug>/session-1/index.html" \

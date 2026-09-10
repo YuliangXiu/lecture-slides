@@ -1,13 +1,13 @@
 # cue-cards `q` 字段补写工作流（分片生成 + 门禁 + apply + e2e）
 
-> 来源：`<lecture>` 全量 `q` 补写（2026-09-09，6 session / 685 页 / 10 个 patch）。
-> 适用：任意讲次把「本页在回答什么问题」补到与 <lecture> 同口径。
+> 来源：`<课程目录>` 全量 `q` 补写（2026-09-09，6 session / 685 页 / 10 个 patch）。
+> 适用：任意讲次把「本页在回答什么问题」补到与 lecture-01 同口径。
 
 ## 0. 铁律
 
 1. **逐字稿本体零改动**。只写 `en.q` / `zh.q` 两个叶子；`lines` / `enter` / `exit` / `facts`
    与 `session{N}.json` 必须字节不变。验收口径 = 对备份逐字段 diff，**非 q 字段 diff 必须为 0**。
-2. **风格基准是 <lecture>，不是通用直觉**。动手前先把 L1 已有的 `q` 全部导出做格式校准
+2. **风格基准是 lecture-01，不是通用直觉**。动手前先把 L1 已有的 `q` 全部导出做格式校准
    （句长中位数、是否带问号、哪些页留空）。
 3. **单次输出会截断**。写满 100+ 条会超输出上限，必须一文件一校验小步推进。
 
@@ -169,16 +169,16 @@ function killAndWait(proc) {
 
 ```bash
 export NODE_PATH=<含 playwright 的 node_modules 所在目录>
-DECK_ENGINE="<课程目录>/_shared/deck-engine"
+DECK_ENGINE="<课程根>/_shared/deck-engine"
 
 # 单 deck 逐页体检（几何溢出 / 破图 / 坏视频 / 空讲稿 / toc 链接数 / JS 报错）
 node "$DECK_ENGINE/check_deck.mjs" "03-slides/session-1"     # → {"status":"ALL CLEAN",...}
 # 跨 deck 终检（离线合规 + 控件 UX + presenter 双向导航）
-node "$DECK_ENGINE/final_accept.mjs" "http://127.0.0.1:<port>/<lecture>/03-slides" \
+node "$DECK_ENGINE/final_accept.mjs" "http://127.0.0.1:<port>/<课程目录>/03-slides" \
      session-1 session-2 session-3 session-4 session-5
 ```
 
-> deck 列表**按 `03-slides/` 下实际目录写**。<lecture> 在 2026-09-09 把 S6 并入 S5，
+> deck 列表**按 `03-slides/` 下实际目录写**。lecture-02 在 2026-09-09 把 S6 并入 S5，
 > `session-6` 目录已删除（媒体目录 `media/decks/session-6/` 保留，被 S5 引用）；
 > 硬写 `session-6` 会 404。
 
@@ -215,7 +215,7 @@ node "$DECK_ENGINE/final_accept.mjs" "http://127.0.0.1:<port>/<lecture>/03-slide
 - **端口被别的服务占用 → 假失败（2026-09-09 实锤）**：`spawn` 起服务失败时**不报错**，
   浏览器照常连 `127.0.0.1:<port>`，于是**读到了另一个讲次的数据**。实测症状：
   `e2e_cue.js` 报 `viewer .slide 期望 685，实得 76` + `deck S4/S5/S6 无法加载` + `501`
-  —— 76/27/28/21 正是 <lecture> 的规模，因为 8942 端口上跑着 L1 的服务。
+  —— 76/27/28/21 正是 lecture-01 的规模，因为 8942 端口上跑着 L1 的服务。
   **诊断法**：`lsof -p <pid> | grep cwd` 看服务的工作目录；`curl` 拿到的字节数与磁盘文件不等也是信号。
   两个脚本已加 `assertPortFree()` 端口预检，占用则 `exit(2)` 并打印占用进程。
 - **e2e 数字先对量级**：685 / 250 / 198 是 L2 的量级。看到 76 / 27 这类数字，

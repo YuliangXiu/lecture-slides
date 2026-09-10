@@ -10,7 +10,7 @@
 
 用法:
   COS_SECRET_ID=xxx COS_SECRET_KEY=yyy python3 cos_sync.py \
-      --src <本地目录> --prefix /<lecture>/media/decks/ \
+      --src <本地目录> --prefix /lecture-01/media/decks/ \
       [--bucket <COS_BUCKET>-<AppID>] [--region <COS_REGION>] \
       [--apply]      # 缺省 dry-run，只打印将要上传/跳过的文件
 
@@ -43,7 +43,7 @@ def iter_files(src):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True)
-    ap.add_argument("--prefix", default="/<lecture>/media/decks/")
+    ap.add_argument("--prefix", default="/lecture-01/media/decks/")
     ap.add_argument("--bucket", default="<COS_BUCKET>-<AppID>")
     ap.add_argument("--region", default="<COS_REGION>")
     ap.add_argument("--apply", action="store_true", help="真正上传；缺省 dry-run")
